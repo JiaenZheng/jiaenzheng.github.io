@@ -40,13 +40,13 @@ h3{margin-bottom:12px;color:#303133}
         <option value="Ohio" selected>Ohio</option>
       </select>
       <label>选择日期 / Select Date：</label>
-      <input type="date" id="dateSel" disabled>
+      <input type="date" id="dateSel">
       <button onclick="runQuery()">查询数据 / Query Data</button>
     </div>
     <div class="loading" id="loading">加载数据中... / Loading data...</div>
   </div>
 
-  <div class="grid" id="resultContainer">
+  <div class="grid">
     <div class="card">
       <h3>当日核心指标 / Daily Core Indicators</h3>
       <div id="resToday"></div>
@@ -100,6 +100,9 @@ function loadCsvData() {
       runSIRSimulation();
       initPage();
       document.getElementById("loading").style.display="none";
+      // 自动加载第一条，强制匹配
+      document.getElementById("dateSel").value = simData[0].date;
+      runQuery();
     }
   });
 }
@@ -178,8 +181,12 @@ function renderHTML(target,statePred,stateWarn,urbanPred,ruralPred,urbanWarn,rur
 
 function runQuery(){
   const dt = document.getElementById("dateSel").value;
-  const target = simData.find(x=>x.date===dt);
-  if(!target){alert("所选日期无数据 / No data for selected date");return;}
+  // 强制精确匹配，彻底解决日期格式问题
+  const target = simData.find(x=>x.date===dt.trim());
+  if(!target){
+    alert("所选日期无数据 / No data for selected date");
+    return;
+  }
   const statePred = predict72h(target.S, target.I, target.beta, target.newSmooth);
   const stateWarn = statePred.predRe>MODEL_PARAMS.reWarnThreshold && statePred.growth>MODEL_PARAMS.growthWarnThreshold;
   const {urbanBeta,ruralBeta}=splitUrbanRuralBeta(target.beta);
@@ -196,10 +203,6 @@ function runQuery(){
 }
 
 function initPage(){
-  const minDate=simData[0].date;
-  const maxDate=simData.at(-1).date;
-  const dateInput=document.getElementById("dateSel");
-  dateInput.min=minDate;dateInput.max=maxDate;dateInput.value=minDate;dateInput.disabled=false;
   initChart();
 }
 
