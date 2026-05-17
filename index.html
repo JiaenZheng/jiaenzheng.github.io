@@ -68,7 +68,7 @@ h3{margin-bottom:12px;color:#303133}
 <script>
 // 模型参数
 const P = {
-  r: 0.77, d0: 12, d1: 7, k: 5/7, ReTh: 1.2,
+  r: 0.77, d0: 12, d1: 7, k: 5/7, ReTh: 1.2, growthTh: 0.3,
   statePop: {"Ohio": 11799448}
 };
 
@@ -90,7 +90,7 @@ function processCumulative(list){
   return res.filter(x=>new Date(x.date)>=new Date("2020-03-09"));
 }
 
-// Ohio 23天标准测试数据（英文短横线，浏览器可识别）
+// Ohio 23天标准测试数据
 const stateData={
 "Ohio":processCumulative([
 {"date":"2020-03-09","cases":39,"deaths":0},
@@ -128,12 +128,19 @@ function nextDay(S,I,beta,gamma,N){
 function calcRe(beta,gamma,S,N){return (beta/gamma)*(S/N)}
 function splitBeta(b){let ba=b/(0.8+P.r*0.2);return {betaA:ba,betaB:P.r*ba}}
 function calcGamma(u){return 1/(P.k*(P.d0-5*u))}
-function predict3Days(S,I,beta,gamma,N){
+
+// 统一72h预测函数：返回Re3、新增、**增速**
+function predict3DaysFull(S,I,beta,gamma,N,currentNew){
   let s=S,i=I,nc=0;
   for(let d=0;d<3;d++){let t=nextDay(s,i,beta,gamma,N);s=t.S;i=t.I;nc=t.newCases;}
-  return {Re3:calcRe(beta,gamma,s,N),nc3:nc};
+  const growth = currentNew === 0 ? 0 : (nc - currentNew) / currentNew;
+  return {Re3:calcRe(beta,gamma,s,N), new3:nc, growth3:growth};
 }
-function isWarning(re3,cc,pc){if(cc===0)return false;let g=(pc-cc)/cc;return re3>P.ReTh&&g>0.3}
+
+// 统一预警判断：严格双条件 Re>1.2 且 增速>30%
+function isWarningFull(Re3, growth3){
+  return Re3 > P.ReTh && growth3 > P.growthTh;
+}
 function estBeta(nc,I,S,N){if(I===0||S===0)return 0;return (nc*N)/(I*S)}
 
 // 图表
@@ -193,27 +200,53 @@ function updateDateRange(state){
   el.min=ds[0];el.max=ds.at(-1);el.value=ds[0];
 }
 
-// 主查询
+// 主查询（核心修正：城乡独立72h预测+独立预警，全州严格双条件）
 function run(){
   const s=document.getElementById("stateSel").value;
   const dt=document.getElementById("dateSel").value;
   const d=stateData[s].find(x=>x.date===dt);
   if(!d){alert("该日期无数据 / No data");return}
   const N=P.statePop[s],cc=d.cases,I=d.totalCases,S=N-I,g=calcGamma(0),b=estBeta(cc,I,S,N),re=calcRe(b,g,S,N);
-  const pred=predict3Days(S,I,b,g,N);
-  const warn=isWarning(pred.Re3,cc,pred.nc3);
+  
+  // 全州：完整72h预测+严格双条件预警
+  const predState = predict3DaysFull(S,I,b,g,N,cc);
+  const warnState = isWarningFull(predState.Re3, predState.growth3);
+
+  // 城乡拆分
   const {betaA,betaB}=splitBeta(b);
   const popA=N*0.8,popB=N*0.2;
-  const SA=popA-I*0.8,IA=I*0.8,SB=popB-I*0.2,IB=I*0.2;
-  const reA=calcRe(betaA,g,SA,popA),reB=calcRe(betaB,g,SB,popB);
-  const warnA=isWarning(predict3Days(SA,IA,betaA,g,popA).Re3,IA,IA);
-  const warnB=isWarning(predict3Days(SB,IB,betaB,g,popB).Re3,IB,IB);
-  let uav=warnB?"⚠️优先农村配送 / Prioritize rural areas":warnA?"⚠️城市配送 / Prioritize urban areas":"✅无需紧急配送 / No urgent delivery required";
+  const IA=I*0.8,IB=I*0.2;
+  const SA=popA-IA,SB=popB-IB;
+  const ccA=cc*0.8,ccB=cc*0.2;
 
+  // 城市：独立72h预测、独立增速、独立预警
+  const reA=calcRe(betaA,g,SA,popA);
+  const predUrban = predict3DaysFull(SA,IA,betaA,g,popA,ccA);
+  const warnUrban = isWarningFull(predUrban.Re3, predUrban.growth3);
+
+  // 农村：独立72h预测、独立增速、独立预警
+  const reB=calcRe(betaB,g,SB,popB);
+  const predRural = predict3DaysFull(SB,IB,betaB,g,popB,ccB);
+  const warnRural = isWarningFull(predRural.Re3, predRural.growth3);
+
+  // 无人机调度：优先触发预警的区域
+  let uav;
+  if(warnRural) uav="⚠️优先农村配送 / Prioritize rural areas";
+  else if(warnUrban) uav="⚠️城市配送 / Prioritize urban areas";
+  else uav="✅无需紧急配送 / No urgent delivery required";
+
+  // 渲染当日指标
   document.getElementById("resToday").innerHTML=`<div class="item"><div>州/日期 / State‑Date</div><div style="font-weight:bold">${s} / ${dt}</div></div><div class="item"><div>当日新增 / Daily New Cases</div><div style="font-weight:bold">${cc}</div></div><div class="item"><div>当前Re指数 / Current Re</div><div style="font-weight:bold;color:${re>1.2?"#F53F3F":"#00B42A"}">${re.toFixed(2)}</div></div>`;
-  document.getElementById("resForecast").innerHTML=`<div class="item"><div>72h后Re预测 / Re‑72h</div><div style="font-weight:bold">${pred.Re3.toFixed(2)}</div></div><div class="item"><div>72h新增预测 / New‑72h</div><div style="font-weight:bold">${Math.round(pred.nc3)}</div></div><div class="item"><div>预警 / Warning</div><div style="font-weight:bold;color:${warn?"#F53F3F":"#00B42A"}">${warn?"触发预警 / Triggered":"未触发 / Not Triggered"}</div></div>`;
-  document.getElementById("resUrban").innerHTML=`<div class="item"><div>城市 / Urban Re‑Warn</div><div style="font-weight:bold">${reA.toFixed(2)} / ${warnA?"⚠️":"✅"}</div></div><div class="item"><div>农村 / Rural Re‑Warn</div><div style="font-weight:bold">${reB.toFixed(2)} / ${warnB?"⚠️":"✅"}</div></div>`;
-  document.getElementById("resUAV").innerHTML=`<div class="item"><div>调度建议 / Dispatch Advice</div><div style="font-weight:bold;color:${uav.includes("⚠️")?"#F53F3F":"#00B42A"}">${uav}</div></div>`;
+  
+  // 渲染全州72h预警（严格双条件）
+  document.getElementById("resForecast").innerHTML=`<div class="item"><div>72h后Re预测 / Re‑72h</div><div style="font-weight:bold">${predState.Re3.toFixed(2)}</div></div><div class="item"><div>72h新增预测 / New‑72h</div><div style="font-weight:bold">${Math.round(predState.new3)}</div></div><div class="item"><div>72h增速 / Growth‑72h</div><div style="font-weight:bold">${(predState.growth3*100).toFixed(1)}%</div></div><div class="item"><div>预警 / Warning</div><div style="font-weight:bold;color:${warnState?"#F53F3F":"#00B42A"}">${warnState?"触发预警 / Triggered":"未触发 / Not Triggered"}</div></div>`;
+  
+  // 渲染城乡：完整Re+72h预测+增速+预警
+  document.getElementById("resUrban").innerHTML=`<div class="item"><div>城市 Urban</div><div>Re:${reA.toFixed(2)} | 72h增速:${(predUrban.growth3*100).toFixed(1)}% | 预警:${warnUrban?"⚠️触发":"✅未触发"}</div></div><div class="item"><div>农村 Rural</div><div>Re:${reB.toFixed(2)} | 72h增速:${(predRural.growth3*100).toFixed(1)}% | 预警:${warnRural?"⚠️触发":"✅未触发"}</div></div>`;
+  
+  // 渲染无人机调度
+  document.getElementById("resUAV").innerHTML=`<div class="item"><div>调度原则 / Dispatch Principle</div><div>农村优先、风险优先 Rural‑Risk First</div></div><div class="item"><div>调度建议 / Dispatch Advice</div><div style="font-weight:bold;color:${uav.includes("⚠️")?"#F53F3F":"#00B42A"}">${uav}</div></div>`;
+  
   updateChart(s);
 }
 
