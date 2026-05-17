@@ -72,18 +72,25 @@ const P = {
   statePop: {"Ohio": 11799448}
 };
 
-// 累计病例转当日新增
+// 累计病例转当日新增 + 保留累计值用于Re计算
 function processCumulative(list){
   let res=[];
+  let total=0;
   for(let i=0;i<list.length;i++){
     let d=list[i];
     let nc=i===0?d.cases:Math.max(0,d.cases‑list[i‑1].cases);
-    res.push({date:d.date,cases:nc,deaths:d.deaths});
+    total+=nc;
+    res.push({
+      date:d.date,
+      cases:nc,
+      totalCases:total, // 累计感染人数（用于Re计算，核心修复）
+      deaths:d.deaths
+    });
   }
   return res.filter(x=>new Date(x.date)>=new Date("2020‑03‑09"));
 }
 
-// Ohio 完整测试数据（23天连续，Re曲线会正常起伏）
+// Ohio 23天连续测试数据
 const stateData={
 "Ohio":processCumulative([
 {"date":"2020‑03‑09","cases":39,"deaths":0},
@@ -135,18 +142,40 @@ function initChart(){
   const ctx=document.getElementById("chartRe").getContext("2d");
   chart=new Chart(ctx,{
     type:"line",
-    data:{labels:[],datasets:[{label:"Re指数（传播能力）",data:[],borderColor:"#165DFF",backgroundColor:"rgba(22,93,255,0.1)",fill:true,tension:0.3}]},
-    options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:3,title:{display:true,text:"Re指数（>1.2需预警）"}},x:{title:{display:true,text:"日期"}}}}
+    data:{labels:[],datasets:[{
+      label:"Re指数（传播能力）",
+      data:[],
+      borderColor:"#165DFF",
+      backgroundColor:"rgba(22,93,255,0.1)",
+      fill:true,
+      tension:0.3,
+      borderWidth:3
+    }]},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      scales:{
+        y:{min:0,max:3,title:{display:true,text:"Re指数（>1.2需预警）"}},
+        x:{title:{display:true,text:"日期"}}
+      }
+    }
   });
 }
 function updateChart(state){
   const d=stateData[state],N=P.statePop[state];
   let lab=[],red=[];
   d.forEach(x=>{
-    let S=N‑x.cases,I=x.cases,g=calcGamma(0),b=estBeta(x.cases,I,S,N),re=calcRe(b,g,S,N);
-    lab.push(x.date);red.push(re.toFixed(2));
+    const I = x.totalCases; // 核心修复：用累计感染，Re正常>1，曲线可见
+    const S = N‑I;
+    const g=calcGamma(0);
+    const b=estBeta(x.cases, I, S, N);
+    const re=calcRe(b,g,S,N);
+    lab.push(x.date);
+    red.push(re.toFixed(2));
   });
-  chart.data.labels=lab;chart.data.datasets[0].data=red;chart.update();
+  chart.data.labels=lab;
+  chart.data.datasets[0].data=red;
+  chart.update();
 }
 
 // 页面初始化
@@ -170,12 +199,12 @@ function run(){
   const dt=document.getElementById("dateSel").value;
   const d=stateData[s].find(x=>x.date===dt);
   if(!d){alert("该日期无数据 / No data");return}
-  const N=P.statePop[s],cc=d.cases,S=N‑cc,I=cc,g=calcGamma(0),b=estBeta(cc,I,S,N),re=calcRe(b,g,S,N);
+  const N=P.statePop[s],cc=d.cases,I=d.totalCases,S=N‑I,g=calcGamma(0),b=estBeta(cc,I,S,N),re=calcRe(b,g,S,N);
   const pred=predict3Days(S,I,b,g,N);
   const warn=isWarning(pred.Re3,cc,pred.nc3);
   const {betaA,betaB}=splitBeta(b);
   const popA=N*0.8,popB=N*0.2;
-  const SA=popA‑cc*0.8,IA=cc*0.8,SB=popB‑cc*0.2,IB=cc*0.2;
+  const SA=popA‑I*0.8,IA=I*0.8,SB=popB‑I*0.2,IB=I*0.2;
   const reA=calcRe(betaA,g,SA,popA),reB=calcRe(betaB,g,SB,popB);
   const warnA=isWarning(predict3Days(SA,IA,betaA,g,popA).Re3,IA,IA);
   const warnB=isWarning(predict3Days(SB,IB,betaB,g,popB).Re3,IB,IB);
