@@ -29,8 +29,9 @@ h3{margin-bottom:12px;color:#303133}
 <body>
 <div class="container">
   <header>
+    <!-- 主标题：中英双语 -->
     <h1>RM‑SIR 美国50州疫情指数监测与无人机干预调度系统 / RM‑SIR US 50 States Epidemic Monitoring & UAV Dispatch System</h1>
-    <!-- 动态显示日期范围（中英双语） -->
+    <!-- 副标题：动态双语日期范围 -->
     <p id="dateRangeText">数据日期范围 Data Range：加载中... Loading...</p>
   </header>
 
@@ -165,7 +166,6 @@ const COMMON_PARAMS = { gamma:0.2, smoothWindow:7, reWarnThreshold:1.2, growthWa
 
 let currentState = "Ohio", rawData = [], calcData = [], chart = null;
 
-// 日期格式化
 function formatDate(d) {
   const date = new Date(d.replace(/\//g, '-'));
   const y = date.getFullYear();
@@ -174,12 +174,10 @@ function formatDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-// 生成大小写适配的文件路径
 function getPaths(bn) {
   return [`${bn}.csv`, `${bn.charAt(0).toUpperCase()+bn.slice(1)}.csv`, `${bn.toUpperCase()}.csv`];
 }
 
-// 递归加载CSV（适配大小写）
 function tryLoad(paths, idx=0) {
   if(idx >= paths.length) {
     alert(`${currentState} 无有效数据 / No valid data，自动切回Ohio州`);
@@ -192,7 +190,6 @@ function tryLoad(paths, idx=0) {
     header:true, 
     skipEmptyLines:true,
     complete:r=>{
-      // 过滤有效数据并排序
       const validData = r.data.filter(x=>x.date&&x.cases&&!isNaN(+x.cases))
                               .map(x=>({date:formatDate(x.date), totalCases:+x.cases}))
                               .sort((a,b)=>new Date(a.date)-new Date(b.date));
@@ -201,11 +198,10 @@ function tryLoad(paths, idx=0) {
       
       rawData = validData;
       calculateData();
-      setDateRange(); // 同步更新日期选择框和顶部双语日期
+      setDateRange();
       initChart();
       runQuery();
       
-      // 隐藏加载、显示结果
       document.getElementById("loading").style.display="none";
       document.getElementById("resultContainer").style.display="grid";
     },
@@ -213,81 +209,57 @@ function tryLoad(paths, idx=0) {
   });
 }
 
-// 加载州数据（核心入口）
 function loadStateData() {
   currentState = document.getElementById("stateSel").value;
-  
-  // 重置界面状态
   document.getElementById("loading").style.display="block";
   document.getElementById("resultContainer").style.display="none";
   document.getElementById("dateSel").value="";
   document.getElementById("dateSel").disabled=true;
   document.querySelector("button").disabled=true;
   document.getElementById("dateRangeText").textContent = "数据日期范围 Data Range：加载中... Loading...";
-  
-  // 加载对应州的CSV
   tryLoad(getPaths(STATE_CONFIG[currentState].csvBaseName));
 }
 
-// 计算SIR和Re指数
 function calculateData() {
   const N = STATE_CONFIG[currentState].population;
   let S=N, I=0;
-  
-  // 计算每日新增
   const dailyRaw = rawData.map((r,i)=>({
     date:r.date,
     newRaw: Math.max(0, i>0 ? r.totalCases-rawData[i-1].totalCases : r.totalCases)
   }));
-  
-  // 7日平滑新增
   const smoothData = dailyRaw.map((r,i)=>{
     let sum=0, count=0;
-    const start=Math.max(0,i-6); // 7天窗口
+    const start=Math.max(0,i-6);
     for(let j=start;j<=i;j++){sum+=dailyRaw[j].newRaw;count++;}
     return {...r, newSmooth:sum/count};
   });
-  
-  // 计算SIR和Re
   calcData = smoothData.map(r=>{
     const beta = (I>0&&S>0) ? (r.newSmooth*N)/(I*S) : 0;
     const Rt = beta/COMMON_PARAMS.gamma;
     const Re = Rt * S/N;
-    
     const res = {...r, S, I, beta, Rt, Re};
-    
-    // 更新SIR状态
     const recover = COMMON_PARAMS.gamma*I;
     S = Math.max(0, S - r.newSmooth);
     I = Math.max(0, I + r.newSmooth - recover);
-    
     return res;
   });
 }
 
-// 设置日期范围（双语显示，随州自动更新）
 function setDateRange() {
   const minDate = calcData[0].date;
   const maxDate = calcData[calcData.length-1].date;
-  
-  // 顶部双语日期范围
   document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${minDate} ~ ${maxDate}`;
-  
-  // 日期选择框
   const dateInput = document.getElementById("dateSel");
   dateInput.min = minDate;
   dateInput.max = maxDate;
   dateInput.value = minDate;
   dateInput.disabled = false;
-  
   document.querySelector("button").disabled = false;
 }
 
-// 初始化Re指数图表
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
   if(chart) chart.destroy();
-  
   chart = new Chart(ctx,{
     type:"line",
     data:{
@@ -313,46 +285,36 @@ function initChart() {
   });
 }
 
-// 72小时预测函数
 function predict72h(S0,I0,b0,i0) {
   const N=STATE_CONFIG[currentState].population;
   let S=S0, I=I0, predNew=0;
-  
   for(let d=0;d<3;d++){
     predNew = b0*I*S/N;
     const recover = COMMON_PARAMS.gamma*I;
     S = Math.max(0, S - predNew);
     I = Math.max(0, I + predNew - recover);
   }
-  
   const predBeta = (I>0&&S>0) ? predNew*N/(I*S) :0;
   const predRe = predBeta/COMMON_PARAMS.gamma * S/N;
   const growthRate = i0===0?0:(predNew-i0)/i0;
-  
   return {Re:predRe, newCases:predNew, growth:growthRate};
 }
 
-// 拆分城乡传播系数
 function splitUrbanRuralBeta(totalBeta) {
   const ruralRatio = STATE_CONFIG[currentState].ruralRatio;
   const urbanRatio = 1 - ruralRatio;
-  
   const urbanBeta = totalBeta / (urbanRatio + COMMON_PARAMS.ruralUrbanRatio*ruralRatio);
   const ruralBeta = COMMON_PARAMS.ruralUrbanRatio * urbanBeta;
-  
   return {urbanBeta, ruralBeta, urbanRatio, ruralRatio};
 }
 
-// 主查询函数
 function runQuery() {
   const targetDate = document.getElementById("dateSel").value;
   const targetData = calcData.find(x=>x.date===targetDate);
-  
   if(!targetData) return alert("所选日期无数据 / No data for selected date，请重新选择");
   
   const statePred = predict72h(targetData.S, targetData.I, targetData.beta, targetData.newSmooth);
   const stateWarn = statePred.Re>1.2 && statePred.growth>0.3;
-  
   const {urbanBeta, ruralBeta, urbanRatio, ruralRatio} = splitUrbanRuralBeta(targetData.beta);
   const urbanPred = predict72h(targetData.S*urbanRatio, targetData.I*urbanRatio, urbanBeta, targetData.newSmooth*urbanRatio);
   const ruralPred = predict72h(targetData.S*ruralRatio, targetData.I*ruralRatio, ruralBeta, targetData.newSmooth*ruralRatio);
@@ -361,7 +323,7 @@ function runQuery() {
   
   const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）/ Prioritize Rural Delivery":urbanWarn?"⚠️ 优先城市配送（高风险）/ Prioritize Urban Delivery":"✅ 无需紧急配送（风险可控）/ No Urgent Delivery";
 
-  // 渲染结果（全部双语）
+  // 全部卡片内容 中英双语
   document.getElementById("resToday").innerHTML=
   `<div class="item">
     <div><strong>日期 Date</strong>：${targetData.date}</div>
@@ -389,7 +351,6 @@ function runQuery() {
   </div>`;
 }
 
-// 页面加载默认加载Ohio州
 window.onload=()=>loadStateData();
 </script>
 </body>
