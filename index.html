@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RM-SIR 美国各州疫情指数监测与无人机干预调度系统</title>
+<title>RM‑SIR 美国各州疫情指数监测与无人机干预调度系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei",Arial,sans-serif}
@@ -78,19 +78,18 @@ function processCumulative(list){
   for(let i=0;i<list.length;i++){
     const curr = list[i];
     const prev = i>0 ? list[i-1] : null;
-    // 首日：当日新增 = 累计值
     const dailyNew = prev ? Math.max(0, curr.cases - prev.cases) : curr.cases;
     res.push({
       date: curr.date,
-      cases: dailyNew,       // 当日新增（计算得出）
-      totalCases: curr.cases,// 累计感染（CSV原生）
+      cases: dailyNew,
+      totalCases: curr.cases,
       deaths: curr.deaths
     });
   }
   return res.filter(x=>new Date(x.date)>=new Date("2020-03-09"));
 }
 
-// 严格按你CSV提取：cases=累计
+// Ohio 真实累计数据（2020-03-09 累计=3）
 const stateData={
 "Ohio":processCumulative([
 {"date":"2020-03-09","cases":3,"deaths":0},
@@ -143,7 +142,7 @@ function isWarningFull(Re3, growth3){
 }
 function estBeta(nc,I,S,N){if(I===0||S===0)return 0;return (nc*N)/(I*S)}
 
-// 图表
+// 图表【修复：X轴日期旋转，完整显示不截断】
 let chart;
 function initChart(){
   const ctx=document.getElementById("chartRe").getContext("2d");
@@ -163,7 +162,15 @@ function initChart(){
       maintainAspectRatio:false,
       scales:{
         y:{min:0,max:3,title:{display:true,text:"Re指数（>1.2需预警）"}},
-        x:{title:{display:true,text:"日期"}}
+        x:{
+          title:{display:true,text:"日期"},
+          ticks:{
+            maxRotation:45,
+            minRotation:45,
+            autoSkip:true,
+            maxTicksLimit:25
+          }
+        }
       }
     }
   });
