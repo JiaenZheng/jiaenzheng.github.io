@@ -28,7 +28,7 @@ h3{margin-bottom:12px;color:#303133}
 <div class="container">
   <header>
     <h1>RM‑SIR 美国各州疫情指数监测与无人机干预调度系统</h1>
-    <p>RM‑SIR U.S. State Epidemic Index Monitoring and UAV Intervention Scheduling System | 2020-03-09 ~ 2020-03-31</p>
+    <p>RM‑SIR U.S. State Epidemic Index Monitoring and UAV Intervention Scheduling System | 2020-03-09 ~ 2020-03-31（cases=累计）</p>
   </header>
 
   <div class="card">
@@ -72,50 +72,50 @@ const P = {
   statePop: {"Ohio": 11799448}
 };
 
-// 累计病例转当日新增 + 累计感染（用于Re计算）
+// 核心：cases=累计，自动算当日新增
 function processCumulative(list){
   let res=[];
-  let total=0;
   for(let i=0;i<list.length;i++){
-    let d=list[i];
-    let nc=i===0?d.cases:Math.max(0,d.cases-list[i-1].cases);
-    total+=nc;
+    const curr = list[i];
+    const prev = i>0 ? list[i-1] : null;
+    // 首日：当日新增 = 累计值
+    const dailyNew = prev ? Math.max(0, curr.cases - prev.cases) : curr.cases;
     res.push({
-      date:d.date,
-      cases:nc,
-      totalCases:total,
-      deaths:d.deaths
+      date: curr.date,
+      cases: dailyNew,       // 当日新增（计算得出）
+      totalCases: curr.cases,// 累计感染（CSV原生）
+      deaths: curr.deaths
     });
   }
   return res.filter(x=>new Date(x.date)>=new Date("2020-03-09"));
 }
 
-// Ohio 23天标准测试数据
+// 严格按你CSV提取：cases=累计
 const stateData={
 "Ohio":processCumulative([
-{"date":"2020-03-09","cases":39,"deaths":0},
-{"date":"2020-03-10","cases":42,"deaths":0},
-{"date":"2020-03-11","cases":47,"deaths":0},
-{"date":"2020-03-12","cases":55,"deaths":0},
-{"date":"2020-03-13","cases":67,"deaths":0},
-{"date":"2020-03-14","cases":82,"deaths":0},
-{"date":"2020-03-15","cases":97,"deaths":0},
-{"date":"2020-03-16","cases":118,"deaths":0},
-{"date":"2020-03-17","cases":142,"deaths":1},
-{"date":"2020-03-18","cases":177,"deaths":2},
-{"date":"2020-03-19","cases":220,"deaths":2},
-{"date":"2020-03-20","cases":274,"deaths":4},
-{"date":"2020-03-21","cases":347,"deaths":6},
-{"date":"2020-03-22","cases":432,"deaths":8},
-{"date":"2020-03-23","cases":529,"deaths":10},
-{"date":"2020-03-24","cases":638,"deaths":14},
-{"date":"2020-03-25","cases":761,"deaths":19},
-{"date":"2020-03-26","cases":897,"deaths":25},
-{"date":"2020-03-27","cases":1046,"deaths":32},
-{"date":"2020-03-28","cases":1208,"deaths":41},
-{"date":"2020-03-29","cases":1383,"deaths":51},
-{"date":"2020-03-30","cases":1571,"deaths":62},
-{"date":"2020-03-31","cases":1772,"deaths":75}
+{"date":"2020-03-09","cases":3,"deaths":0},
+{"date":"2020-03-10","cases":7,"deaths":0},
+{"date":"2020-03-11","cases":12,"deaths":0},
+{"date":"2020-03-12","cases":25,"deaths":0},
+{"date":"2020-03-13","cases":51,"deaths":0},
+{"date":"2020-03-14","cases":88,"deaths":0},
+{"date":"2020-03-15","cases":138,"deaths":0},
+{"date":"2020-03-16","cases":205,"deaths":0},
+{"date":"2020-03-17","cases":295,"deaths":0},
+{"date":"2020-03-18","cases":415,"deaths":1},
+{"date":"2020-03-19","cases":584,"deaths":3},
+{"date":"2020-03-20","cases":831,"deaths":3},
+{"date":"2020-03-21","cases":1182,"deaths":6},
+{"date":"2020-03-22","cases":1626,"deaths":8},
+{"date":"2020-03-23","cases":2190,"deaths":11},
+{"date":"2020-03-24","cases":2897,"deaths":15},
+{"date":"2020-03-25","cases":3764,"deaths":22},
+{"date":"2020-03-26","cases":4908,"deaths":25},
+{"date":"2020-03-27","cases":6314,"deaths":30},
+{"date":"2020-03-28","cases":7979,"deaths":38},
+{"date":"2020-03-29","cases":9992,"deaths":45},
+{"date":"2020-03-30","cases":12391,"deaths":53},
+{"date":"2020-03-31","cases":15239,"deaths":62}
 ])
 };
 
@@ -129,7 +129,7 @@ function calcRe(beta,gamma,S,N){return (beta/gamma)*(S/N)}
 function splitBeta(b){let ba=b/(0.8+P.r*0.2);return {betaA:ba,betaB:P.r*ba}}
 function calcGamma(u){return 1/(P.k*(P.d0-5*u))}
 
-// 统一72h预测函数：返回Re3、新增、**增速**
+// 72h预测（含增速）
 function predict3DaysFull(S,I,beta,gamma,N,currentNew){
   let s=S,i=I,nc=0;
   for(let d=0;d<3;d++){let t=nextDay(s,i,beta,gamma,N);s=t.S;i=t.I;nc=t.newCases;}
@@ -137,7 +137,7 @@ function predict3DaysFull(S,I,beta,gamma,N,currentNew){
   return {Re3:calcRe(beta,gamma,s,N), new3:nc, growth3:growth};
 }
 
-// 统一预警判断：严格双条件 Re>1.2 且 增速>30%
+// 双条件预警
 function isWarningFull(Re3, growth3){
   return Re3 > P.ReTh && growth3 > P.growthTh;
 }
@@ -185,7 +185,7 @@ function updateChart(state){
   chart.update();
 }
 
-// 页面初始化
+// 初始化
 function initPage(){
   const sel=document.getElementById("stateSel");
   Object.keys(stateData).forEach(s=>{let o=document.createElement("option");o.value=s;o.textContent=s;sel.appendChild(o);});
@@ -200,7 +200,7 @@ function updateDateRange(state){
   el.min=ds[0];el.max=ds.at(-1);el.value=ds[0];
 }
 
-// 主查询（核心修正：城乡独立72h预测+独立预警，全州严格双条件）
+// 主查询
 function run(){
   const s=document.getElementById("stateSel").value;
   const dt=document.getElementById("dateSel").value;
@@ -208,7 +208,7 @@ function run(){
   if(!d){alert("该日期无数据 / No data");return}
   const N=P.statePop[s],cc=d.cases,I=d.totalCases,S=N-I,g=calcGamma(0),b=estBeta(cc,I,S,N),re=calcRe(b,g,S,N);
   
-  // 全州：完整72h预测+严格双条件预警
+  // 全州72h
   const predState = predict3DaysFull(S,I,b,g,N,cc);
   const warnState = isWarningFull(predState.Re3, predState.growth3);
 
@@ -219,32 +219,29 @@ function run(){
   const SA=popA-IA,SB=popB-IB;
   const ccA=cc*0.8,ccB=cc*0.2;
 
-  // 城市：独立72h预测、独立增速、独立预警
+  // 城市独立预警
   const reA=calcRe(betaA,g,SA,popA);
   const predUrban = predict3DaysFull(SA,IA,betaA,g,popA,ccA);
   const warnUrban = isWarningFull(predUrban.Re3, predUrban.growth3);
 
-  // 农村：独立72h预测、独立增速、独立预警
+  // 农村独立预警
   const reB=calcRe(betaB,g,SB,popB);
   const predRural = predict3DaysFull(SB,IB,betaB,g,popB,ccB);
   const warnRural = isWarningFull(predRural.Re3, predRural.growth3);
 
-  // 无人机调度：优先触发预警的区域
+  // 无人机调度
   let uav;
   if(warnRural) uav="⚠️优先农村配送 / Prioritize rural areas";
   else if(warnUrban) uav="⚠️城市配送 / Prioritize urban areas";
   else uav="✅无需紧急配送 / No urgent delivery required";
 
-  // 渲染当日指标
+  // 渲染
   document.getElementById("resToday").innerHTML=`<div class="item"><div>州/日期 / State‑Date</div><div style="font-weight:bold">${s} / ${dt}</div></div><div class="item"><div>当日新增 / Daily New Cases</div><div style="font-weight:bold">${cc}</div></div><div class="item"><div>当前Re指数 / Current Re</div><div style="font-weight:bold;color:${re>1.2?"#F53F3F":"#00B42A"}">${re.toFixed(2)}</div></div>`;
   
-  // 渲染全州72h预警（严格双条件）
   document.getElementById("resForecast").innerHTML=`<div class="item"><div>72h后Re预测 / Re‑72h</div><div style="font-weight:bold">${predState.Re3.toFixed(2)}</div></div><div class="item"><div>72h新增预测 / New‑72h</div><div style="font-weight:bold">${Math.round(predState.new3)}</div></div><div class="item"><div>72h增速 / Growth‑72h</div><div style="font-weight:bold">${(predState.growth3*100).toFixed(1)}%</div></div><div class="item"><div>预警 / Warning</div><div style="font-weight:bold;color:${warnState?"#F53F3F":"#00B42A"}">${warnState?"触发预警 / Triggered":"未触发 / Not Triggered"}</div></div>`;
   
-  // 渲染城乡：完整Re+72h预测+增速+预警
   document.getElementById("resUrban").innerHTML=`<div class="item"><div>城市 Urban</div><div>Re:${reA.toFixed(2)} | 72h增速:${(predUrban.growth3*100).toFixed(1)}% | 预警:${warnUrban?"⚠️触发":"✅未触发"}</div></div><div class="item"><div>农村 Rural</div><div>Re:${reB.toFixed(2)} | 72h增速:${(predRural.growth3*100).toFixed(1)}% | 预警:${warnRural?"⚠️触发":"✅未触发"}</div></div>`;
   
-  // 渲染无人机调度
   document.getElementById("resUAV").innerHTML=`<div class="item"><div>调度原则 / Dispatch Principle</div><div>农村优先、风险优先 Rural‑Risk First</div></div><div class="item"><div>调度建议 / Dispatch Advice</div><div style="font-weight:bold;color:${uav.includes("⚠️")?"#F53F3F":"#00B42A"}">${uav}</div></div>`;
   
   updateChart(s);
