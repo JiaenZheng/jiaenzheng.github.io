@@ -41,12 +41,12 @@ h3{margin-bottom:12px;color:#303133}
       </select>
       <label>选择日期 / Select Date：</label>
       <input type="date" id="dateSel">
-      <button onclick="runQuery()">查询数据 / Query Data</button>
+      <button onclick="run()">查询数据 / Query Data</button>
     </div>
     <div class="loading" id="loading">加载数据中... / Loading data...</div>
   </div>
 
-  <div class="grid">
+  <div class="grid" id="resultContainer">
     <div class="card">
       <h3>当日核心指标 / Daily Core Indicators</h3>
       <div id="resToday"></div>
@@ -72,162 +72,140 @@ h3{margin-bottom:12px;color:#303133}
 
 <script>
 const MODEL_PARAMS = {
-  population: 11799448,
+  population: 11700000,
   gamma: 0.2,
-  smoothWindow: 7,
   reWarnThreshold: 1.2,
   growthWarnThreshold: 0.3,
-  ruralUrbanRatio: 0.77,
-  startDate:"2020-03-04",
-  endDate:"2022-01-25"
+  ruralUrbanRatio: 0.77
 };
 
-let rawData = [];
-let simData = [];
+let raw = [];
 let chart = null;
 
-// 日期标准化为时间戳，彻底解决格式问题
-function getTs(dStr) {
-  return new Date(dStr.replace(/\//g, '-')).getTime();
-}
-
-function loadCsvData() {
+// 读你 CSV，直接拿你算好的 Re、β、I、S
+function loadCsv() {
   Papa.parse("ohio_data.csv", {
     download: true,
     header: true,
-    complete: function(results) {
-      rawData = results.data
-        .filter(row => row.date && row.cases && !isNaN(parseInt(row.cases)))
-        .map(row => ({
-          date: row.date.trim(),
-          ts: getTs(row.date),
-          totalCases: parseInt(row.cases)
+    skipEmptyLines: true,
+    complete: res => {
+      raw = res.data
+        .filter(r => r["date"] && r["Re(t)"] && !r["date"].includes("人口"))
+        .map(r => ({
+          date: r["date"].replace(/\//g, "-"),
+          cases: parseFloat(r["cases"] || 0),
+          I: parseFloat(r["I"] || 0),
+          S: parseFloat(r["S"] || 0),
+          beta: parseFloat(r["β"] || 0),
+          Re: parseFloat(r["Re(t)"] || 0)
         }))
-        .sort((a,b)=>a.ts - b.ts)
-        .filter(x=>x.ts >= getTs(MODEL_PARAMS.startDate) && x.ts <= getTs(MODEL_PARAMS.endDate));
-      
-      runSIRSimulation();
+        .filter(r => !isNaN(r.Re));
       initPage();
-      document.getElementById("loading").style.display="none";
+      document.getElementById("loading").style.display = "none";
     }
   });
 }
 
-function runSIRSimulation(){
-  const N = MODEL_PARAMS.population;
-  let S = N;
-  let I = 1;
-  simData = [];
-  for(let i=0;i<rawData.length;i++){
-    const d = rawData[i];
-    const prevTotal = i>0 ? rawData[i-1].totalCases : 0;
-    const newRaw = Math.max(0, d.totalCases - prevTotal);
-    let sum=0,cnt=0;
-    for(let j=Math.max(0,i-MODEL_PARAMS.smoothWindow+1);j<=i;j++){
-      const prevJ = j>0 ? rawData[j-1].totalCases : 0;
-      sum += Math.max(0, rawData[j].totalCases - prevJ);
-      cnt++;
-    }
-    const newSmooth = sum/cnt;
-    const safeI = Math.max(I, 1);
-    const safeS = Math.max(S, 1);
-    const beta = (newSmooth * N) / (safeI * safeS);
-    const Re = (beta / MODEL_PARAMS.gamma) * (safeS / N);
-    simData.push({
-      date:d.date,
-      ts:d.ts,
-      newRaw:newRaw,
-      newSmooth:newSmooth,
-      S:S,I:I,beta:beta,Re:Re
-    });
-    const newRecover = MODEL_PARAMS.gamma * I;
-    S = Math.max(1, S - newSmooth);
-    I = Math.max(1, I + newSmooth - newRecover);
-  }
-}
-
-function initChart(){
+function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
-  chart = new Chart(ctx,{
-    type:"line",
-    data:{labels:simData.map(x=>x.date),datasets:[{
-      label:"Re指数（传播能力）/ Re Index (Transmission Capacity)",
-      data:simData.map(x=>x.Re.toFixed(2)),
-      borderColor:"#165DFF",backgroundColor:"rgba(22,93,255,0.1)",fill:true,tension:0.3,borderWidth:2
-    }]},
-    options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:3},x:{ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:30}}}}
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: raw.map(x => x.date),
+      datasets: [{
+        label: "Re(t)",
+        data: raw.map(x => x.Re.toFixed(2)),
+        borderColor: "#165DFF",
+        backgroundColor: "rgba(22,93,255,0.1)",
+        fill: true,
+        tension: 0.3,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { min: 0, max: 3, title: { display: true, text: "Re(t)" } },
+        x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 40 } }
+      }
+    }
   });
 }
 
-function predict72h(S0,I0,beta0,newIn0){
-  const N=MODEL_PARAMS.population;
-  let S=Math.max(S0,1),I=Math.max(I0,1),predNew=0;
-  for(let d=0;d<3;d++){predNew = beta0 * I * S / N; const rec=MODEL_PARAMS.gamma*I;S=Math.max(1,S-predNew);I=Math.max(1,I+predNew-rec);}
-  const predRe=(beta0/MODEL_PARAMS.gamma)*(S/N);
-  const growth=newIn0===0?0:(predNew-newIn0)/newIn0;
-  return {predRe:Math.max(predRe,0),predNew,growth};
-}
-
-function splitUrbanRuralBeta(totalBeta){
-  const urbanBeta=totalBeta/(0.8+MODEL_PARAMS.ruralUrbanRatio*0.2);
-  const ruralBeta=MODEL_PARAMS.ruralUrbanRatio*urbanBeta;
-  return {urbanBeta,ruralBeta};
-}
-
-function renderHTML(target,statePred,stateWarn,urbanPred,ruralPred,urbanWarn,ruralWarn,uavTip){
-  document.getElementById("resToday").innerHTML=`
-    <div class="item"><div>日期 / Date</div><div style="font-weight:bold">${target.date}</div></div>
-    <div class="item"><div>当日新增(原始) / Raw Daily New</div><div style="font-weight:bold">${Math.round(target.newRaw)}</div></div>
-    <div class="item"><div>当前Re指数 / Current Re Index</div><div style="font-weight:bold;color:${target.Re>1.2?"#F53F3F":"#00B42A"}">${target.Re.toFixed(2)}</div></div>`;
-  document.getElementById("resForecast").innerHTML=`
-    <div class="item"><div>72h预测Re / 72h Predicted Re</div><div style="font-weight:bold">${statePred.predRe.toFixed(2)}</div></div>
-    <div class="item"><div>72h新增预测 / 72h New Cases Prediction</div><div style="font-weight:bold">${Math.round(statePred.predNew)}</div></div>
-    <div class="item"><div>72h增速 / 72h Growth Rate</div><div style="font-weight:bold">${(statePred.growth*100).toFixed(1)}%</div></div>
-    <div class="item"><div>预警状态 / Warning Status</div><div style="font-weight:bold;color:${stateWarn?"#F53F3F":"#00B42A"}">${stateWarn?"⚠️触发预警 / Warning Triggered":"✅未触发预警 / No Warning"}</div></div>`;
-  document.getElementById("resUrban").innerHTML=`
-    <div class="item"><div>城市 / Urban</div><div>Re: ${urbanPred.predRe.toFixed(2)} | 增速 / Growth: ${(urbanPred.growth*100).toFixed(1)}% | ${urbanWarn?"⚠️":"✅"}</div></div>
-    <div class="item"><div>农村 / Rural</div><div>Re: ${ruralPred.predRe.toFixed(2)} | 增速 / Growth: ${(ruralPred.growth*100).toFixed(1)}% | ${ruralWarn?"⚠️":"✅"}</div></div>`;
-  document.getElementById("resUAV").innerHTML=`
-    <div class="item"><div>调度建议 / Dispatch Suggestion</div><div style="font-weight:bold;color:${uavTip.includes("⚠️")?"#F53F3F":"#00B42A"}">${uavTip}</div></div>`;
-}
-
-// 核心：用时间戳匹配，不再匹配字符串
-function runQuery(){
-  try{
-    const inputTs = new Date(document.getElementById("dateSel").value).getTime();
-    const target = simData.find(x => x.ts === inputTs);
-    if(!target){
-      alert("所选日期无数据 / No data for selected date");
-      return;
-    }
-    const statePred = predict72h(target.S, target.I, target.beta, target.newSmooth);
-    const stateWarn = statePred.predRe>MODEL_PARAMS.reWarnThreshold && statePred.growth>MODEL_PARAMS.growthWarnThreshold;
-    const {urbanBeta,ruralBeta}=splitUrbanRuralBeta(target.beta);
-    const urbanPop=MODEL_PARAMS.population*0.8;const ruralPop=MODEL_PARAMS.population*0.2;
-    const urbanI=target.I*0.8;const ruralI=target.I*0.2;
-    const urbanS=urbanPop-urbanI;const ruralS=ruralPop-ruralI;
-    const urbanNew=target.newSmooth*0.8;const ruralNew=target.newSmooth*0.2;
-    const urbanPred=predict72h(urbanS,urbanI,urbanBeta,urbanNew);
-    const ruralPred=predict72h(ruralS,ruralI,ruralBeta,ruralNew);
-    const urbanWarn=urbanPred.predRe>MODEL_PARAMS.reWarnThreshold&&urbanPred.growth>MODEL_PARAMS.growthWarnThreshold;
-    const ruralWarn=ruralPred.predRe>MODEL_PARAMS.reWarnThreshold&&ruralPred.growth>MODEL_PARAMS.growthWarnThreshold;
-    let uavTip=ruralWarn?"⚠️ 优先农村配送（农村高风险）/ Prioritize Rural Delivery (High Risk)":urbanWarn?"⚠️ 优先城市配送（城市高风险）/ Prioritize Urban Delivery (High Risk)":"✅ 无需紧急配送（风险可控）/ No Urgent Delivery (Controllable Risk)";
-    renderHTML(target,statePred,stateWarn,urbanPred,ruralPred,urbanWarn,ruralWarn,uavTip);
-  }catch(e){
-    alert("查询异常 / Query Error: "+e.message);
+function predict72h(S0, I0, beta0) {
+  const N = MODEL_PARAMS.population;
+  let S = S0, I = I0, predNew = 0;
+  for (let d = 0; d < 3; d++) {
+    predNew = beta0 * I * S / N;
+    S -= predNew;
+    I += pred - MODEL_PARAMS.gamma * I;
   }
+  const Re = (beta0 / MODEL_PARAMS.gamma) * (S / N);
+  const growth = predNew / (I0 || 1);
+  return { Re, predNew, growth };
 }
 
-function initPage(){
-  const firstTs = simData[0].ts;
-  const firstDate = new Date(firstTs).toISOString().split('T')[0];
-  const dateInput=document.getElementById("dateSel");
-  dateInput.value = firstDate;
+function splitBeta(b) {
+  const urban = b / (0.8 + MODEL_PARAMS.ruralUrbanRatio * 0.2);
+  const rural = MODEL_PARAMS.ruralUrbanRatio * urban;
+  return { urban, rural };
+}
+
+function run() {
+  const dt = document.getElementById("dateSel").value;
+  const t = raw.find(x => x.date === dt);
+  if (!t) {
+    alert("所选日期无数据 / No data for selected date");
+    return;
+  }
+
+  const state = predict72h(t.S, t.I, t.beta);
+  const warn = state.Re > MODEL_PARAMS.reWarnThreshold && state.growth > MODEL_PARAMS.growthWarnThreshold;
+
+  const { urbanBeta, ruralBeta } = splitBeta(t.beta);
+  const urban = predict72h(t.S * 0.8, t.I * 0.8, urbanBeta);
+  const rural = predict72h(t.S * 0.2, t.I * 0.2, ruralBeta);
+  const u = urban.Re > MODEL_PARAMS.reWarnThreshold && urban.growth > MODEL_PARAMS.growthWarnThreshold;
+  const r = rural.Re > MODEL_PARAMS.reWarnThreshold && rural.growth > MODEL_PARAMS.growthWarnThreshold;
+  const tip = r ? "⚠️优先农村配送（农村高风险）/ Prioritize Rural Delivery (High Risk)" :
+              u ? "⚠️优先城市配送（城市高风险）/ Prioritize Urban Delivery (High Risk)" :
+              "✅无需紧急配送（风险可控）/ No Urgent Delivery (Controllable Risk)";
+
+  document.getElementById("resToday").innerHTML = `
+    <div class="item"><div>日期 / Date: ${t.date}</div></div>
+    <div class="item"><div>累计病例 / Total Cases: ${Math.round(t.cases)}</div></div>
+    <div class="item"><div>Re(t): <b>${t.Re.toFixed(2)}</b></div></div>
+  `;
+
+  document.getElementById("resForecast").innerHTML = `
+    <div class="item"><div>72h预测Re / 72h Predicted Re: ${state.Re.toFixed(2)}</div></div>
+    <div class="item"><div>72h增速 / 72h Growth: ${(state.growth*100).toFixed(1)}%</div></div>
+    <div class="item" style="color:${warn ? "red" : "green"}"><div>${warn ? "⚠️触发预警 / Warning" : "✅正常 / Safe"}</div></div>
+  `;
+
+  document.getElementById("resUrban").innerHTML = `
+    <div class="item"><div>城市 / Urban: Re=${urban.Re.toFixed(2)} ${u?"⚠️":"✅"}</div></div>
+    <div class="item"><div>农村 / Rural: Re=${rural.Re.toFixed(2)} ${r?"⚠️":"✅"}</div></div>
+  `;
+
+  document.getElementById("resUAV").innerHTML = `
+    <div class="item"><div>${tip}</div></div>
+  `;
+}
+
+function initPage() {
+  const d0 = raw[0].date;
+  const d1 = raw.at(-1).date;
+  const el = document.getElementById("dateSel");
+  el.min = d0;
+  el.max = d1;
+  el.value = d0;
   initChart();
-  runQuery();
+  run();
 }
 
-window.onload=loadCsvData;
+window.onload = loadCsv;
 </script>
 </body>
 </html>
