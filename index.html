@@ -3,315 +3,437 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RM‑SIR 美国各州疫情指数监测系统 | RM‑SIR US States Epidemic Monitoring System</title>
+<title>RM‑SIR 美国各州疫情指数监测系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root {
-  --primary: #165DFF;
-  --success: #00B42A;
-  --danger: #F53F3F;
-  --bg: #F7F8FA;
-  --card: #FFFFFF;
-  --text: #1D2129;
-  --text-light: #4E5969;
-  --border: #E5E6EB;
-}
-* {margin:0;padding:0;box-sizing:border-box;}
-body {
-  font-family:"Noto Sans SC", "Roboto", sans-serif;
-  background-color:var(--bg);
-  color:var(--text);
-  line-height:1.6;
-}
-.container {
-  max-width:1200px;
-  margin:0 auto;
-  padding:20px;
-}
-header {
-  background:linear-gradient(135deg,var(--primary),#0F4CD0);
-  color:white;
-  padding:24px 0;
-  border-radius:12px;
-  margin-bottom:24px;
-  text-align:center;
-  box-shadow:0 4px 12px rgba(22,93,255,0.15);
-}
-header h1 {font-size:24px;font-weight:700;margin-bottom:8px;}
-header p {font-size:14px;opacity:0.9;}
-.lang-tag {
-  font-size:12px;
-  opacity:0.8;
-  margin-left:8px;
-}
-.card-grid {
-  display:grid;
-  grid-template-columns:1fr;
-  gap:20px;
-}
-@media (min-width:768px) {
-  .card-grid {grid-template-columns:1fr 1fr;}
-}
-.card {
-  background:var(--card);
-  border-radius:12px;
-  padding:20px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.06);
-  border:1px solid var(--border);
-}
-.card-title {
-  font-size:16px;
-  font-weight:500;
-  color:var(--text-light);
-  margin-bottom:16px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.form-group {
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:12px;
-  margin-bottom:16px;
-}
-.form-group label {font-weight:500;}
-select, input[type="date"] {
-  padding:8px 12px;
-  border:1px solid var(--border);
-  border-radius:6px;
-  font-size:14px;
-  outline:none;
-  transition:border 0.2s;
-}
-select:focus, input[type="date"]:focus {border-color:var(--primary);}
-.btn {
-  background:var(--primary);
-  color:white;
-  border:none;
-  padding:8px 16px;
-  border-radius:6px;
-  font-size:14px;
-  font-weight:500;
-  cursor:pointer;
-  transition:background 0.2s;
-}
-.btn:hover {background:#0F4CD0;}
-.result-item {
-  padding:12px;
-  background:var(--bg);
-  border-radius:8px;
-  margin-bottom:8px;
-}
-.result-label {font-size:14px;color:var(--text-light);}
-.result-value {font-size:18px;font-weight:500;margin-top:4px;}
-.warn {color:var(--danger);font-weight:500;}
-.safe {color:var(--success);font-weight:500;}
-.chart-container {
-  width:100%;
-  height:320px;
-  margin-top:16px;
-}
-.full-width {grid-column:1 / -1;}
-#stateSel {min-width:200px;}
-.en-text {
-  font-family:"Roboto", sans-serif;
-  font-size:13px;
-  opacity:0.8;
-  margin-top:4px;
-}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Microsoft YaHei}
+body{background:#f5f7fa;padding:20px}
+.container{max-width:1200px;margin:0 auto}
+header{background:#165DFF;color:#fff;padding:24px;text-align:center;border-radius:12px;margin-bottom:24px}
+.card{background:#fff;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 2px 8px #00000010}
+.form{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+select,input{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;min-width:150px}
+button{background:#165DFF;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.full{grid-column:1/-1}
+.item{padding:12px;background:#f5f7fa;border-radius:8px;margin:8px 0}
+.chart-box{width:100%;height:320px}
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <h1>RM‑SIR 美国各州疫情指数监测与预警系统</h1>
-    <p>RM‑SIR US States Epidemic Monitoring & Early Warning System</p>
-    <p>支持全美各州 | 2020‑03‑09起数据 | 累计转新增自动处理 | 72小时预警 
-      <span class="lang-tag">Supports All US States | Data from 2020‑03‑09 | Auto Cumulative→Daily | 72h Warning</span>
-    </p>
+    <h1>RM‑SIR 美国各州疫情指数监测系统</h1>
+    <p>US States Epidemic Monitoring System | 2020‑03‑09 ~ 2020‑03‑31（测试数据）</p>
   </header>
 
   <div class="card">
-    <div class="card-title">
-      <span>🔍 数据查询 <span class="lang-tag">Data Query</span></span>
-    </div>
-    <div class="form-group">
-      <label>选择州：<span class="lang-tag">Select State:</span></label>
+    <div class="form">
+      <label>选择州：</label>
       <select id="stateSel"></select>
-      <label>选择日期：<span class="lang-tag">Select Date:</span></label>
+      <label>选择日期：</label>
       <input type="date" id="dateSel">
-      <button class="btn" onclick="run()">查询数据 <span class="lang-tag">Query Data</span></button>
+      <button onclick="run()">查询数据</button>
     </div>
   </div>
 
-  <div class="card-grid">
+  <div class="grid">
     <div class="card">
-      <div class="card-title">
-        <span>📊 当日核心指标 <span class="lang-tag">Daily Core Indicators</span></span>
-      </div>
+      <h3>当日核心指标</h3>
       <div id="resToday"></div>
     </div>
     <div class="card">
-      <div class="card-title">
-        <span>🚨 72小时风险预警 <span class="lang-tag">72h Risk Warning</span></span>
-      </div>
+      <h3>72小时预警</h3>
       <div id="resForecast"></div>
     </div>
     <div class="card">
-      <div class="card-title">
-        <span>🏙️ 城乡差异化监测（r=0.77） <span class="lang-tag">Urban‑Rural Monitoring (r=0.77)</span></span>
-      </div>
-      <div id="resUrbanRural"></div>
+      <h3>城乡监测（r=0.77）</h3>
+      <div id="resUrban"></div>
     </div>
     <div class="card">
-      <div class="card-title">
-        <span>🤖 无人机调度建议 <span class="lang-tag">UAV Dispatch Suggestion</span></span>
-      </div>
+      <h3>无人机调度建议</h3>
       <div id="resUAV"></div>
     </div>
-    <div class="card full-width">
-      <div class="card-title">
-        <span>📈 Re指数历史趋势 + 预警标记 <span class="lang-tag">Re Index Trend + Warning Markers</span></span>
-      </div>
-      <div class="chart-container">
-        <canvas id="chartRe"></canvas>
-      </div>
+    <div class="card full">
+      <h3>Re指数历史趋势</h3>
+      <div class="chart-box"><canvas id="chartRe"></canvas></div>
     </div>
   </div>
 </div>
 
 <script>
-// ========== 1. 核心参数 ==========
+// 1. 核心参数配置
 const P = {
-  r: 0.77, d0: 12, d1: 7, k: 5/7, ReTh: 1.2, IncTh: 1.3,
-  statePop: {
-    "Ohio": 11799448,
-    "California": 39538223,
-    "New York": 20201249
+  r: 0.77,          // 农村/城市传播率比
+  d0: 12, d1: 7,    // 治疗天数（无干预/干预）
+  k: 5/7,           // 传染期系数
+  ReTh: 1.2,        // Re预警阈值
+  statePop: {       // 州人口（2020年数据）
+    "Ohio": 11799448
   }
 };
 
-// ========== 2. 累计转当日新增（修复格式问题） ==========
+// 2. 累计病例转当日新增（核心函数）
 function processCumulativeToDaily(cumulativeData) {
   const dailyData = [];
   for (let i = 0; i < cumulativeData.length; i++) {
     const current = cumulativeData[i];
     if (i === 0) {
-      dailyData.push({date: current.date, cases: current.cases, deaths: current.deaths});
+      // 首日：累计=新增（无前日数据）
+      dailyData.push({
+        date: current.date,
+        cases: current.cases,
+        deaths: current.deaths
+      });
     } else {
-      const prev = cumulativeData[i-1];
+      const prev = cumulativeData[i - 1];
+      // 当日新增=当日累计-前日累计（避免负数）
       const dailyCases = Math.max(0, current.cases - prev.cases);
-      dailyData.push({date: current.date, cases: dailyCases, deaths: current.deaths});
+      dailyData.push({
+        date: current.date,
+        cases: dailyCases,
+        deaths: current.deaths
+      });
     }
   }
-  return dailyData.filter(item => new Date(item.date) >= new Date("2020-03-09"));
+  return dailyData;
 }
 
-// ========== 3. 修复：Ohio完整正确格式688天累计数据 ==========
+// 3. Ohio测试数据（2020-03-09至2020-03-31，连续23天，语法完整）
 const stateData = {
-"Ohio": processCumulativeToDaily([
-{"date":"2020-03-09","cases":39,"deaths":0},
-{"date":"2020-03-10","cases":42,"deaths":0},
-{"date":"2020-03-11","cases":47,"deaths":0},
-{"date":"2020-03-12","cases":55,"deaths":0},
-{"date":"2020-03-13","cases":67,"deaths":0},
-{"date":"2020-03-14","cases":82,"deaths":0},
-{"date":"2020-03-15","cases":97,"deaths":0},
-{"date":"2020-03-16","cases":118,"deaths":0},
-{"date":"2020-03-17","cases":142,"deaths":1},
-{"date":"2020-03-18","cases":177,"deaths":2},
-{"date":"2020-03-19","cases":220,"deaths":2},
-{"date":"2020-03-20","cases":274,"deaths":4},
-{"date":"2020-03-21","cases":347,"deaths":6},
-{"date":"2020-03-22","cases":432,"deaths":8},
-{"date":"2020-03-23","cases":529,"deaths":10},
-{"date":"2020-03-24","cases":638,"deaths":14},
-{"date":"2020-03-25","cases":761,"deaths":19},
-{"date":"2020-03-26","cases":897,"deaths":25},
-{"date":"2020-03-27","cases":1046,"deaths":32},
-{"date":"2020-03-28","cases":1208,"deaths":41},
-{"date":"2020-03-29","cases":1383,"deaths":51},
-{"date":"2020-03-30","cases":1571,"deaths":62},
-{"date":"2020-03-31","cases":1772,"deaths":75},
-{"date":"2022-01-24","cases":2189642,"deaths":31546},
-{"date":"2022-01-25","cases":2201745,"deaths":31632}
-]),
-"California": processCumulativeToDaily([
-{"date":"2020-03-09","cases":157,"deaths":2},
-{"date":"2020-03-10","cases":221,"deaths":2},
-{"date":"2022-01-25","cases":6230860,"deaths":78242}
-]),
-"New York": processCumulativeToDaily([
-{"date":"2020-03-09","cases":421,"deaths":4},
-{"date":"2020-03-10","cases":514,"deaths":6},
-{"date":"2022-01-25","cases":4892715,"deaths":62147}
-])
+  "Ohio": processCumulativeToDaily([
+    {"date":"2020-03-09","cases":39,"deaths":0},
+    {"date":"2020-03-10","cases":42,"deaths":0},
+    {"date":"2020-03-11","cases":47,"deaths":0},
+    {"date":"2020-03-12","cases":55,"deaths":0},
+    {"date":"2020-03-13","cases":67,"deaths":0},
+    {"date":"2020-03-14","cases":82,"deaths":0},
+    {"date":"2020-03-15","cases":97,"deaths":0},
+    {"date":"2020-03-16","cases":118,"deaths":0},
+    {"date":"2020-03-17","cases":142,"deaths":1},
+    {"date":"2020-03-18","cases":177,"deaths":2},
+    {"date":"2020-03-19","cases":220,"deaths":2},
+    {"date":"2020-03-20","cases":274,"deaths":4},
+    {"date":"2020-03-21","cases":347,"deaths":6},
+    {"date":"2020-03-22","cases":432,"deaths":8},
+    {"date":"2020-03-23","cases":529,"deaths":10},
+    {"date":"2020-03-24","cases":638,"deaths":14},
+    {"date":"2020-03-25","cases":761,"deaths":19},
+    {"date":"2020-03-26","cases":897,"deaths":25},
+    {"date":"2020-03-27","cases":1046,"deaths":32},
+    {"date":"2020-03-28","cases":1208,"deaths":41},
+    {"date":"2020-03-29","cases":1383,"deaths":51},
+    {"date":"2020-03-30","cases":1571,"deaths":62},
+    {"date":"2020-03-31","cases":1772,"deaths":75}
+  ])
 };
 
-// ========== 4. 页面初始化（修复下拉框加载） ==========
+// 4. 页面初始化（加载州、日期选择器）
 function initPage() {
   const stateSel = document.getElementById("stateSel");
-  const states = Object.keys(stateData).sort();
-  // 强制清空再添加，修复下拉框空白
-  stateSel.innerHTML = "";
+  const states = Object.keys(stateData);
+  
+  // 加载州选择器
   states.forEach(state => {
-    const opt = document.createElement("option");
-    opt.value = state;
-    opt.textContent = state;
-    if (state === "Ohio") opt.selected = true;
-    stateSel.appendChild(opt);
+    const option = document.createElement("option");
+    option.value = state;
+    option.textContent = state;
+    stateSel.appendChild(option);
   });
+
+  // 更新日期范围（只显示有数据的日期）
   updateDateRange("Ohio");
-  stateSel.addEventListener("change", e => updateDateRange(e.target.value));
+  
+  // 监听州选择变化
+  stateSel.addEventListener("change", function() {
+    updateDateRange(this.value);
+  });
+
+  // 初始化图表
   initChart();
+  
+  // 默认查询首日数据
   run();
 }
+
+// 更新日期选择器的可选范围
 function updateDateRange(state) {
-  const dates = stateData[state].map(i => i.date);
+  const data = stateData[state];
+  const dates = data.map(item => item.date);
+  const minDate = dates[0];
+  const maxDate = dates[dates.length - 1];
+  
   const dateSel = document.getElementById("dateSel");
-  dateSel.min = dates[0];
-  dateSel.max = dates[dates.length-1];
-  dateSel.value = dates[0];
+  dateSel.min = minDate;
+  dateSel.max = maxDate;
+  dateSel.value = minDate; // 默认选中首日
 }
 
-// ========== 5. 模型函数 ==========
-function nextDay(S,I,beta,gamma,N){const nc=beta*I*S/N;const nr=gamma*I;return{S:S-nc,I:I+nc-nr,newCases:nc}}
-function calcRe(beta,gamma,S,N){return(beta/gamma)*(S/N)}
-function splitBeta(b){const ba=b/(0.8+P.r*0.2);return{betaA:ba,betaB:P.r*ba}}
-function calcGamma(u){return 1/(P.k*(P.d0-5*u))}
-function predict3Days(S,I,beta,gamma,N){let s=S,i=I,nc=0;for(let d=0;d<3;d++){let r=nextDay(s,i,beta,gamma,N);s=r.S;i=r.I;nc=r.newCases}return{S3:s,I3:i,nc3:nc,Re3:calcRe(beta,gamma,s,N)}}
-function isWarning(Re3,ncNow,nc3){if(ncNow===0)return false;let ir=(nc3-ncNow)/ncNow;return Re3>P.ReTh&&ir>0.3}
-function estBeta(nc,I,S,N){return(I===0||S===0)?0:(nc*N)/(I*S)}
-
-// ========== 6. 图表 ==========
-let chart;
-function initChart(){const ctx=document.getElementById("chartRe").getContext("2d");chart=new Chart(ctx,{type:"line",data:{labels:[],datasets:[{label:"Re指数 (Re Index)",data:[],borderColor:"#165DFF",fill:true,tension:0.2},{label:"预警触发 (Warning Trigger)",data:[],borderColor:"#F53F3F",pointRadius:5,showLine:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:3},x:{grid:{display:false}}}}})}
-function updateChart(state){const d=stateData[state],N=P.statePop[state];let lab=[],re=[],warn=[];d.forEach(day=>{let S=N-day.cases,I=day.cases,g=calcGamma(0),b=estBeta(day.cases,I,S,N),Re=calcRe(b,g,S,N),p=predict3Days(S,I,b,g,N),w=isWarning(p.Re3,day.cases,p.nc3);lab.push(day.date);re.push(Re.toFixed(2));warn.push(w?1:null)});chart.data.labels=lab;chart.data.datasets[0].data=re;chart.data.datasets[1].data=warn;chart.update()}
-
-// ========== 7. 主查询 ==========
-function run(){
-  const s=document.getElementById("stateSel").value,d=document.getElementById("dateSel").value,data=stateData[s],idx=data.findIndex(i=>i.date===d);
-  if(idx===-1){alert("该州无此日期数据 | No data for this date in selected state");return}
-  const day=data[idx],N=P.statePop[s],S=N-day.cases,I=day.cases,g=calcGamma(0),b=estBeta(day.cases,I,S,N),Re=calcRe(b,g,S,N),p=predict3Days(S,I,b,g,N),w=isWarning(p.Re3,day.cases,p.nc3),{betaA,betaB}=splitBeta(b);
-  const popA=N*0.8,popB=N*0.2,SA=popA-day.cases*0.8,IA=day.cases*0.8,SB=popB-day.cases*0.2,IB=day.cases*0.2;
-  const ReA=calcRe(betaA,g,SA,popA),ReB=calcRe(betaB,g,SB,popB),wa=isWarning(predict3Days(SA,IA,betaA,g,popA).Re3,IA,IA),wb=isWarning(predict3Days(SB,IB,betaB,g,popB).Re3,IB,IB);
-  let uCN="",uEN="";
-  if(wb){uCN="⚠️ 优先农村地区配送（高风险）";uEN="⚠️ Priority Rural Area Delivery (High Risk)"}
-  else if(wa){uCN="⚠️ 城市地区配送（高风险）";uEN="⚠️ Urban Area Delivery (High Risk)"}
-  else{uCN="✅ 无需调度无人机（风险可控）";uEN="✅ No UAV Dispatch Needed (Controllable Risk)"}
-  renderResults(s,d,day,Re,p,w,ReA,ReB,wa,wb,uCN,uEN);
-  updateChart(s);
+// 5. 疫情模型核心函数
+// 计算次日数据（易感、感染、新增）
+function nextDay(S, I, beta, gamma, N) {
+  const newCases = beta * I * S / N; // 新增病例
+  const newRecover = gamma * I;      // 新增康复
+  return {
+    S: S - newCases,  // 次日易感人群
+    I: I + newCases - newRecover, // 次日感染人群
+    newCases: newCases
+  };
 }
-function renderResults(state,date,day,Re,pred,warn,ReA,ReB,wa,wb,uCN,uEN){
-  const wCN=warn?"⚠️ 触发预警（需干预）":"✅ 未触发预警（安全）",wEN=warn?"⚠️ Warning Triggered":"✅ No Warning";
-  document.getElementById("resToday").innerHTML=`<div class="result-item"><div class="result-label">州/日期 <span class="lang-tag">State/Date</span></div><div class="result-value">${state} / ${date}</div></div><div class="result-item"><div class="result-label">当日新增病例 <span class="lang-tag">Daily New Cases</span></div><div class="result-value">${day.cases.toLocaleString()} 例</div></div><div class="result-item"><div class="result-label">当前Re指数 <span class="lang-tag">Current Re Index</span></div><div class="result-value">${Re.toFixed(2)}</div></div>`;
-  document.getElementById("resForecast").innerHTML=`<div class="result-item"><div class="result-label">72h后Re预测 <span class="lang-tag">Re in 72h</span></div><div class="result-value">${pred.Re3.toFixed(2)}</div></div><div class="result-item"><div class="result-label">72h后新增预测 <span class="lang-tag">New Cases in 72h</span></div><div class="result-value">${Math.round(pred.nc3).toLocaleString()}</div></div><div class="result-item"><div class="result-label">预警结果 <span class="lang-tag">Warning Result</span></div><div class="result-value">${wCN}</div><div class="en-text">${wEN}</div></div>`;
-  document.getElementById("resUrbanRural").innerHTML=`<div class="result-item"><div class="result-label">城市Re/预警 <span class="lang-tag">Urban Re/Warn</span></div><div class="result-value">${ReA.toFixed(2)} / ${wa?'⚠️':'✅'}</div></div><div class="result-item"><div class="result-label">农村Re/预警 <span class="lang-tag">Rural Re/Warn</span></div><div class="result-value">${ReB.toFixed(2)} / ${wb?'⚠️':'✅'}</div></div>`;
-  document.getElementById("resUAV").innerHTML=`<div class="result-item"><div class="result-label">调度原则 <span class="lang-tag">Dispatch Rule</span></div><div class="result-value">农村优先、风险优先</div><div class="en-text">Rural & Risk Priority</div></div><div class="result-item"><div class="result-label">调度指令 <span class="lang-tag">Instruction</span></div><div class="result-value">${uCN}</div><div class="en-text">${uEN}</div></div>`;
+
+// 计算Re指数（传播能力）
+function calcRe(beta, gamma, S, N) {
+  return (beta / gamma) * (S / N);
 }
-window.onload=initPage;
+
+// 拆分城乡传播率
+function splitBeta(betaTotal) {
+  const betaA = betaTotal / (0.8 + P.r * 0.2); // 城市传播率（80%人口）
+  const betaB = P.r * betaA;                    // 农村传播率（20%人口）
+  return { betaA, betaB };
+}
+
+// 计算恢复率
+function calcGamma(u) {
+  return 1 / (P.k * (P.d0 - 5 * u));
+}
+
+// 72小时预测（3天后的Re、新增）
+function predict3Days(S, I, beta, gamma, N) {
+  let currentS = S;
+  let currentI = I;
+  let finalNewCases = 0;
+  
+  // 循环计算3天数据
+  for (let d = 0; d < 3; d++) {
+    const res = nextDay(currentS, currentI, beta, gamma, N);
+    currentS = res.S;
+    currentI = res.I;
+    finalNewCases = res.newCases;
+  }
+  
+  // 返回3天后的结果
+  return {
+    Re3: calcRe(beta, gamma, currentS, N), // 3天后Re
+    nc3: finalNewCases                     // 3天后新增
+  };
+}
+
+// 判断是否触发预警（双条件：Re>1.2 且 新增增长>30%）
+function isWarning(Re3, currentCases, predictCases) {
+  if (currentCases === 0) return false;
+  const growthRate = (predictCases - currentCases) / currentCases;
+  return Re3 > P.ReTh && growthRate > 0.3;
+}
+
+// 估算传播率beta
+function estBeta(newCases, I, S, N) {
+  if (I === 0 || S === 0) return 0;
+  return (newCases * N) / (I * S);
+}
+
+// 6. 图表相关（Re指数趋势图）
+let chart; // 图表实例
+
+// 初始化图表
+function initChart() {
+  const ctx = document.getElementById("chartRe").getContext("2d");
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: [], // 日期标签
+      datasets: [{
+        label: "Re指数（传播能力）",
+        data: [],  // Re指数数据
+        borderColor: "#165DFF",
+        backgroundColor: "rgba(22, 93, 255, 0.1)",
+        fill: true,
+        tension: 0.3,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          min: 0,
+          max: 3, // Re指数常见范围（0-3）
+          title: {
+            display: true,
+            text: "Re指数（>1.2需预警）"
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: "日期"
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `Re指数: ${context.parsed.y.toFixed(2)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// 更新图表数据（根据选中的州）
+function updateChart(state) {
+  const data = stateData[state];
+  const N = P.statePop[state];
+  
+  const labels = [];
+  const reData = [];
+  
+  // 计算每天的Re指数
+  data.forEach(day => {
+    const S = N - day.cases; // 易感人群（总人口-累计感染，简化计算）
+    const I = day.cases;     // 感染人群（当日新增，简化计算）
+    const gamma = calcGamma(0); // 恢复率（默认无干预）
+    const beta = estBeta(day.cases, I, S, N); // 估算传播率
+    const Re = calcRe(beta, gamma, S, N);     // 计算Re指数
+    
+    labels.push(day.date);
+    reData.push(Re.toFixed(2));
+  });
+  
+  // 更新图表
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = reData;
+  chart.update();
+}
+
+// 7. 主查询函数（点击“查询数据”触发）
+function run() {
+  const state = document.getElementById("stateSel").value;
+  const targetDate = document.getElementById("dateSel").value;
+  
+  // 获取该州的所有数据
+  const data = stateData[state];
+  // 找到目标日期的数据
+  const dayData = data.find(item => item.date === targetDate);
+  
+  // 数据校验（理论上不会触发，因为日期选择器只显示有数据的日期）
+  if (!dayData) {
+    alert("该日期无数据，请选择其他日期");
+    return;
+  }
+  
+  const N = P.statePop[state];          // 该州人口
+  const currentCases = dayData.cases;   // 当日新增病例
+  const S = N - currentCases;           // 易感人群
+  const I = currentCases;               // 感染人群
+  const gamma = calcGamma(0);           // 恢复率（无干预）
+  const beta = estBeta(currentCases, I, S, N); // 传播率
+  const Re = calcRe(beta, gamma, S, N); // 当前Re指数
+  
+  // 72小时预测
+  const pred = predict3Days(S, I, beta, gamma, N);
+  const warn = isWarning(pred.Re3, currentCases, pred.nc3);
+  
+  // 城乡拆分计算
+  const { betaA, betaB } = splitBeta(beta);
+  const popA = N * 0.8; // 城市人口（80%）
+  const popB = N * 0.2; // 农村人口（20%）
+  const SA = popA - currentCases * 0.8; // 城市易感
+  const IA = currentCases * 0.8;        // 城市感染
+  const SB = popB - currentCases * 0.2; // 农村易感
+  const IB = currentCases * 0.2;        // 农村感染
+  
+  const ReA = calcRe(betaA, gamma, SA, popA); // 城市Re
+  const ReB = calcRe(betaB, gamma, SB, popB); // 农村Re
+  const warnA = isWarning(predict3Days(SA, IA, betaA, gamma, popA).Re3, IA, IA);
+  const warnB = isWarning(predict3Days(SB, IB, betaB, gamma, popB).Re3, IB, IB);
+  
+  // 无人机调度建议
+  let uavAdvice = "";
+  if (warnB) {
+    uavAdvice = "⚠️ 优先农村配送（农村高风险）";
+  } else if (warnA) {
+    uavAdvice = "⚠️ 城市配送（城市高风险）";
+  } else {
+    uavAdvice = "✅ 无需紧急配送（风险可控）";
+  }
+  
+  // 渲染结果到页面
+  renderResults(state, targetDate, currentCases, Re, pred, warn, ReA, ReB, warnA, warnB, uavAdvice);
+  
+  // 更新趋势图
+  updateChart(state);
+}
+
+// 渲染查询结果到页面
+function renderResults(state, date, cases, Re, pred, warn, ReA, ReB, warnA, warnB, uavAdvice) {
+  // 当日指标
+  document.getElementById("resToday").innerHTML = `
+    <div class="item">
+      <div>州/日期</div>
+      <div style="font-weight:bold">${state} / ${date}</div>
+    </div>
+    <div class="item">
+      <div>当日新增病例</div>
+      <div style="font-weight:bold">${cases} 例</div>
+    </div>
+    <div class="item">
+      <div>当前Re指数（传播能力）</div>
+      <div style="font-weight:bold; color:${Re > 1.2 ? '#F53F3F' : '#00B42A'}">${Re.toFixed(2)}</div>
+    </div>
+  `;
+  
+  // 72小时预警
+  document.getElementById("resForecast").innerHTML = `
+    <div class="item">
+      <div>72小时后Re指数预测</div>
+      <div style="font-weight:bold">${pred.Re3.toFixed(2)}</div>
+    </div>
+    <div class="item">
+      <div>72小时后新增病例预测</div>
+      <div style="font-weight:bold">${Math.round(pred.nc3)} 例</div>
+    </div>
+    <div class="item">
+      <div>预警结果</div>
+      <div style="font-weight:bold; color:${warn ? '#F53F3F' : '#00B42A'}">
+        ${warn ? '⚠️ 触发预警（需干预）' : '✅ 未触发预警'}
+      </div>
+    </div>
+  `;
+  
+  // 城乡监测
+  document.getElementById("resUrban").innerHTML = `
+    <div class="item">
+      <div>城市Re指数/预警</div>
+      <div style="font-weight:bold">${ReA.toFixed(2)} / ${warnA ? '⚠️' : '✅'}</div>
+    </div>
+    <div class="item">
+      <div>农村Re指数/预警</div>
+      <div style="font-weight:bold">${ReB.toFixed(2)} / ${warnB ? '⚠️' : '✅'}</div>
+    </div>
+  `;
+  
+  // 无人机调度
+  document.getElementById("resUAV").innerHTML = `
+    <div class="item">
+      <div>调度原则</div>
+      <div>农村优先、风险优先</div>
+    </div>
+    <div class="item">
+      <div>调度建议</div>
+      <div style="font-weight:bold; color:${uavAdvice.includes('⚠️') ? '#F53F3F' : '#00B42A'}">
+        ${uavAdvice}
+      </div>
+    </div>
+  `;
+}
+
+// 页面加载完成后初始化
+window.onload = initPage;
 </script>
 </body>
 </html>
