@@ -1,34 +1,34 @@
 <!DOCTYPE html>
-<html lang="zh‑CN">
+<html lang="zh-CN">
 <head>
-<meta charset="utf‑8">
-<meta name="viewport" content="width=device‑width, initial‑scale=1.0">
-<title>RM‑SIR 美国各州疫情指数监测与无人机干预调度系统</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RM-SIR 美国各州疫情指数监测与无人机干预调度系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-*{margin:0;padding:0;box‑sizing:border‑box;font‑family:"Microsoft YaHei",Arial,sans‑serif}
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei",Arial,sans-serif}
 body{background:#f5f7fa;padding:24px}
-.container{max‑width:1200px;margin:0 auto}
-header{background:#165DFF;color:#fff;padding:28px;border‑radius:16px;text‑align:center;margin‑bottom:24px}
-header h1{font‑size:24px;margin‑bottom:8px}
-header p{opacity:0.9;font‑size:14px}
-.card{background:#fff;padding:20px;border‑radius:16px;margin‑bottom:20px;box‑shadow:0 2px 12px rgba(0,0,0,0.06)}
-.form{display:flex;gap:16px;align‑items:center;margin‑bottom:16px;flex‑wrap:wrap}
-select,input[type="date"]{padding:10px 14px;border:1px solid #dcdfe6;border‑radius:8px;font‑size:14px;min‑width:160px}
-button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border‑radius:8px;cursor:pointer;font‑size:14px}
-.grid{display:grid;grid‑template‑columns:1fr 1fr;gap:20px;margin‑bottom:20px}
-.full{grid‑column:1 / -1}
-.item{padding:14px;background:#f5f7fa;border‑radius:10px;margin:10px 0}
+.container{max-width:1200px;margin:0 auto}
+header{background:#165DFF;color:#fff;padding:28px;border-radius:16px;text-align:center;margin-bottom:24px}
+header h1{font-size:24px;margin-bottom:8px}
+header p{opacity:0.9;font-size:14px}
+.card{background:#fff;padding:20px;border-radius:16px;margin-bottom:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+.form{display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+select,input[type="date"]{padding:10px 14px;border:1px solid #dcdfe6;border-radius:8px;font-size:14px;min-width:160px}
+button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.full{grid-column:1 / -1}
+.item{padding:14px;background:#f5f7fa;border-radius:10px;margin:10px 0}
 .item div{margin:4px 0}
-.chart‑box{width:100%;height:360px;padding‑top:10px}
-h3{margin‑bottom:12px;color:#303133}
+.chart-box{width:100%;height:360px;padding-top:10px}
+h3{margin-bottom:12px;color:#303133}
 </style>
 </head>
 <body>
 <div class="container">
   <header>
     <h1>RM‑SIR 美国各州疫情指数监测与无人机干预调度系统</h1>
-    <p>Epidemic Index Monitoring & UAV Intervention Scheduling System | 2020‑03‑09 ~ 2020‑03‑31</p>
+    <p>RM‑SIR U.S. State Epidemic Index Monitoring and UAV Intervention Scheduling System | 2020-03-09 ~ 2020-03-31</p>
   </header>
 
   <div class="card">
@@ -60,7 +60,7 @@ h3{margin‑bottom:12px;color:#303133}
     </div>
     <div class="card full">
       <h3>Re指数历史趋势 / Historical Trends of the Re Index</h3>
-      <div class="chart‑box"><canvas id="chartRe"></canvas></div>
+      <div class="chart-box"><canvas id="chartRe"></canvas></div>
     </div>
   </div>
 </div>
@@ -72,50 +72,50 @@ const P = {
   statePop: {"Ohio": 11799448}
 };
 
-// 累计病例转当日新增 + 保留累计值用于Re计算
+// 累计病例转当日新增 + 累计感染（用于Re计算）
 function processCumulative(list){
   let res=[];
   let total=0;
   for(let i=0;i<list.length;i++){
     let d=list[i];
-    let nc=i===0?d.cases:Math.max(0,d.cases‑list[i‑1].cases);
+    let nc=i===0?d.cases:Math.max(0,d.cases-list[i-1].cases);
     total+=nc;
     res.push({
       date:d.date,
       cases:nc,
-      totalCases:total, // 累计感染人数（用于Re计算，核心修复）
+      totalCases:total,
       deaths:d.deaths
     });
   }
-  return res.filter(x=>new Date(x.date)>=new Date("2020‑03‑09"));
+  return res.filter(x=>new Date(x.date)>=new Date("2020-03-09"));
 }
 
-// Ohio 23天连续测试数据
+// Ohio 23天标准测试数据（英文短横线，浏览器可识别）
 const stateData={
 "Ohio":processCumulative([
-{"date":"2020‑03‑09","cases":39,"deaths":0},
-{"date":"2020‑03‑10","cases":42,"deaths":0},
-{"date":"2020‑03‑11","cases":47,"deaths":0},
-{"date":"2020‑03‑12","cases":55,"deaths":0},
-{"date":"2020‑03‑13","cases":67,"deaths":0},
-{"date":"2020‑03‑14","cases":82,"deaths":0},
-{"date":"2020‑03‑15","cases":97,"deaths":0},
-{"date":"2020‑03‑16","cases":118,"deaths":0},
-{"date":"2020‑03‑17","cases":142,"deaths":1},
-{"date":"2020‑03‑18","cases":177,"deaths":2},
-{"date":"2020‑03‑19","cases":220,"deaths":2},
-{"date":"2020‑03‑20","cases":274,"deaths":4},
-{"date":"2020‑03‑21","cases":347,"deaths":6},
-{"date":"2020‑03‑22","cases":432,"deaths":8},
-{"date":"2020‑03‑23","cases":529,"deaths":10},
-{"date":"2020‑03‑24","cases":638,"deaths":14},
-{"date":"2020‑03‑25","cases":761,"deaths":19},
-{"date":"2020‑03‑26","cases":897,"deaths":25},
-{"date":"2020‑03‑27","cases":1046,"deaths":32},
-{"date":"2020‑03‑28","cases":1208,"deaths":41},
-{"date":"2020‑03‑29","cases":1383,"deaths":51},
-{"date":"2020‑03‑30","cases":1571,"deaths":62},
-{"date":"2020‑03‑31","cases":1772,"deaths":75}
+{"date":"2020-03-09","cases":39,"deaths":0},
+{"date":"2020-03-10","cases":42,"deaths":0},
+{"date":"2020-03-11","cases":47,"deaths":0},
+{"date":"2020-03-12","cases":55,"deaths":0},
+{"date":"2020-03-13","cases":67,"deaths":0},
+{"date":"2020-03-14","cases":82,"deaths":0},
+{"date":"2020-03-15","cases":97,"deaths":0},
+{"date":"2020-03-16","cases":118,"deaths":0},
+{"date":"2020-03-17","cases":142,"deaths":1},
+{"date":"2020-03-18","cases":177,"deaths":2},
+{"date":"2020-03-19","cases":220,"deaths":2},
+{"date":"2020-03-20","cases":274,"deaths":4},
+{"date":"2020-03-21","cases":347,"deaths":6},
+{"date":"2020-03-22","cases":432,"deaths":8},
+{"date":"2020-03-23","cases":529,"deaths":10},
+{"date":"2020-03-24","cases":638,"deaths":14},
+{"date":"2020-03-25","cases":761,"deaths":19},
+{"date":"2020-03-26","cases":897,"deaths":25},
+{"date":"2020-03-27","cases":1046,"deaths":32},
+{"date":"2020-03-28","cases":1208,"deaths":41},
+{"date":"2020-03-29","cases":1383,"deaths":51},
+{"date":"2020-03-30","cases":1571,"deaths":62},
+{"date":"2020-03-31","cases":1772,"deaths":75}
 ])
 };
 
@@ -123,17 +123,17 @@ const stateData={
 function nextDay(S,I,beta,gamma,N){
   let nc=beta*I*S/N;
   let nr=gamma*I;
-  return {S:S‑nc,I:I+nc‑nr,newCases:nc};
+  return {S:S-nc,I:I+nc-nr,newCases:nc};
 }
 function calcRe(beta,gamma,S,N){return (beta/gamma)*(S/N)}
 function splitBeta(b){let ba=b/(0.8+P.r*0.2);return {betaA:ba,betaB:P.r*ba}}
-function calcGamma(u){return 1/(P.k*(P.d0‑5*u))}
+function calcGamma(u){return 1/(P.k*(P.d0-5*u))}
 function predict3Days(S,I,beta,gamma,N){
   let s=S,i=I,nc=0;
   for(let d=0;d<3;d++){let t=nextDay(s,i,beta,gamma,N);s=t.S;i=t.I;nc=t.newCases;}
   return {Re3:calcRe(beta,gamma,s,N),nc3:nc};
 }
-function isWarning(re3,cc,pc){if(cc===0)return false;let g=(pc‑cc)/cc;return re3>P.ReTh&&g>0.3}
+function isWarning(re3,cc,pc){if(cc===0)return false;let g=(pc-cc)/cc;return re3>P.ReTh&&g>0.3}
 function estBeta(nc,I,S,N){if(I===0||S===0)return 0;return (nc*N)/(I*S)}
 
 // 图表
@@ -165,8 +165,8 @@ function updateChart(state){
   const d=stateData[state],N=P.statePop[state];
   let lab=[],red=[];
   d.forEach(x=>{
-    const I = x.totalCases; // 核心修复：用累计感染，Re正常>1，曲线可见
-    const S = N‑I;
+    const I = x.totalCases;
+    const S = N-I;
     const g=calcGamma(0);
     const b=estBeta(x.cases, I, S, N);
     const re=calcRe(b,g,S,N);
@@ -190,7 +190,7 @@ function initPage(){
 function updateDateRange(state){
   const d=stateData[state],ds=d.map(x=>x.date);
   const el=document.getElementById("dateSel");
-  el.min=ds[0];el.max=ds.at(‑1);el.value=ds[0];
+  el.min=ds[0];el.max=ds.at(-1);el.value=ds[0];
 }
 
 // 主查询
@@ -199,21 +199,21 @@ function run(){
   const dt=document.getElementById("dateSel").value;
   const d=stateData[s].find(x=>x.date===dt);
   if(!d){alert("该日期无数据 / No data");return}
-  const N=P.statePop[s],cc=d.cases,I=d.totalCases,S=N‑I,g=calcGamma(0),b=estBeta(cc,I,S,N),re=calcRe(b,g,S,N);
+  const N=P.statePop[s],cc=d.cases,I=d.totalCases,S=N-I,g=calcGamma(0),b=estBeta(cc,I,S,N),re=calcRe(b,g,S,N);
   const pred=predict3Days(S,I,b,g,N);
   const warn=isWarning(pred.Re3,cc,pred.nc3);
   const {betaA,betaB}=splitBeta(b);
   const popA=N*0.8,popB=N*0.2;
-  const SA=popA‑I*0.8,IA=I*0.8,SB=popB‑I*0.2,IB=I*0.2;
+  const SA=popA-I*0.8,IA=I*0.8,SB=popB-I*0.2,IB=I*0.2;
   const reA=calcRe(betaA,g,SA,popA),reB=calcRe(betaB,g,SB,popB);
   const warnA=isWarning(predict3Days(SA,IA,betaA,g,popA).Re3,IA,IA);
   const warnB=isWarning(predict3Days(SB,IB,betaB,g,popB).Re3,IB,IB);
   let uav=warnB?"⚠️优先农村配送 / Prioritize rural areas":warnA?"⚠️城市配送 / Prioritize urban areas":"✅无需紧急配送 / No urgent delivery required";
 
-  document.getElementById("resToday").innerHTML=`<div class="item"><div>州/日期 / State‑Date</div><div style="font‑weight:bold">${s} / ${dt}</div></div><div class="item"><div>当日新增 / Daily New Cases</div><div style="font‑weight:bold">${cc}</div></div><div class="item"><div>当前Re指数 / Current Re</div><div style="font‑weight:bold;color:${re>1.2?"#F53F3F":"#00B42A"}">${re.toFixed(2)}</div></div>`;
-  document.getElementById("resForecast").innerHTML=`<div class="item"><div>72h后Re预测 / Re‑72h</div><div style="font‑weight:bold">${pred.Re3.toFixed(2)}</div></div><div class="item"><div>72h新增预测 / New‑72h</div><div style="font‑weight:bold">${Math.round(pred.nc3)}</div></div><div class="item"><div>预警 / Warning</div><div style="font‑weight:bold;color:${warn?"#F53F3F":"#00B42A"}">${warn?"触发预警 / Triggered":"未触发 / Not Triggered"}</div></div>`;
-  document.getElementById("resUrban").innerHTML=`<div class="item"><div>城市 / Urban Re‑Warn</div><div style="font‑weight:bold">${reA.toFixed(2)} / ${warnA?"⚠️":"✅"}</div></div><div class="item"><div>农村 / Rural Re‑Warn</div><div style="font‑weight:bold">${reB.toFixed(2)} / ${warnB?"⚠️":"✅"}</div></div>`;
-  document.getElementById("resUAV").innerHTML=`<div class="item"><div>调度建议 / Dispatch Advice</div><div style="font‑weight:bold;color:${uav.includes("⚠️")?"#F53F3F":"#00B42A"}">${uav}</div></div>`;
+  document.getElementById("resToday").innerHTML=`<div class="item"><div>州/日期 / State‑Date</div><div style="font-weight:bold">${s} / ${dt}</div></div><div class="item"><div>当日新增 / Daily New Cases</div><div style="font-weight:bold">${cc}</div></div><div class="item"><div>当前Re指数 / Current Re</div><div style="font-weight:bold;color:${re>1.2?"#F53F3F":"#00B42A"}">${re.toFixed(2)}</div></div>`;
+  document.getElementById("resForecast").innerHTML=`<div class="item"><div>72h后Re预测 / Re‑72h</div><div style="font-weight:bold">${pred.Re3.toFixed(2)}</div></div><div class="item"><div>72h新增预测 / New‑72h</div><div style="font-weight:bold">${Math.round(pred.nc3)}</div></div><div class="item"><div>预警 / Warning</div><div style="font-weight:bold;color:${warn?"#F53F3F":"#00B42A"}">${warn?"触发预警 / Triggered":"未触发 / Not Triggered"}</div></div>`;
+  document.getElementById("resUrban").innerHTML=`<div class="item"><div>城市 / Urban Re‑Warn</div><div style="font-weight:bold">${reA.toFixed(2)} / ${warnA?"⚠️":"✅"}</div></div><div class="item"><div>农村 / Rural Re‑Warn</div><div style="font-weight:bold">${reB.toFixed(2)} / ${warnB?"⚠️":"✅"}</div></div>`;
+  document.getElementById("resUAV").innerHTML=`<div class="item"><div>调度建议 / Dispatch Advice</div><div style="font-weight:bold;color:${uav.includes("⚠️")?"#F53F3F":"#00B42A"}">${uav}</div></div>`;
   updateChart(s);
 }
 
