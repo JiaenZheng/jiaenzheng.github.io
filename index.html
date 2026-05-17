@@ -29,9 +29,9 @@ h3{margin-bottom:12px;color:#303133}
 <body>
 <div class="container">
   <header>
-    <h1>RM‑SIR 美国50州疫情指数监测系统</h1>
-    <!-- 已删除“自动忽略文件名大小写”文字，新增动态日期显示区 -->
-    <p id="dateRangeText">数据日期范围：加载中...</p>
+    <h1>RM‑SIR 美国50州疫情指数监测与无人机干预调度系统 / RM‑SIR US 50 States Epidemic Monitoring & UAV Dispatch System</h1>
+    <!-- 动态显示日期范围（中英双语） -->
+    <p id="dateRangeText">数据日期范围 Data Range：加载中... Loading...</p>
   </header>
 
   <div class="card">
@@ -92,9 +92,9 @@ h3{margin-bottom:12px;color:#303133}
       </select>
       <label>选择日期 / Select Date：</label>
       <input type="date" id="dateSel" disabled>
-      <button onclick="runQuery()" disabled>查询数据</button>
+      <button onclick="runQuery()" disabled>查询数据 / Query Data</button>
     </div>
-    <div class="loading" id="loading">加载中...</div>
+    <div class="loading" id="loading">加载中... Loading...</div>
   </div>
 
   <div class="grid" id="resultContainer" style="display:none">
@@ -182,7 +182,7 @@ function getPaths(bn) {
 // 递归加载CSV（适配大小写）
 function tryLoad(paths, idx=0) {
   if(idx >= paths.length) {
-    alert(`${currentState} 无有效数据，自动切回Ohio州`);
+    alert(`${currentState} 无有效数据 / No valid data，自动切回Ohio州`);
     document.getElementById("stateSel").value = "Ohio";
     loadStateData();
     return;
@@ -201,7 +201,7 @@ function tryLoad(paths, idx=0) {
       
       rawData = validData;
       calculateData();
-      setDateRange(); // 同步更新日期选择框和顶部显示
+      setDateRange(); // 同步更新日期选择框和顶部双语日期
       initChart();
       runQuery();
       
@@ -223,7 +223,7 @@ function loadStateData() {
   document.getElementById("dateSel").value="";
   document.getElementById("dateSel").disabled=true;
   document.querySelector("button").disabled=true;
-  document.getElementById("dateRangeText").textContent = "数据日期范围：加载中...";
+  document.getElementById("dateRangeText").textContent = "数据日期范围 Data Range：加载中... Loading...";
   
   // 加载对应州的CSV
   tryLoad(getPaths(STATE_CONFIG[currentState].csvBaseName));
@@ -265,36 +265,35 @@ function calculateData() {
   });
 }
 
-// 设置日期范围（同步更新顶部显示+日期选择框）
+// 设置日期范围（双语显示，随州自动更新）
 function setDateRange() {
   const minDate = calcData[0].date;
   const maxDate = calcData[calcData.length-1].date;
   
-  // 1. 更新顶部显示的日期范围（随州动态变化）
-  document.getElementById("dateRangeText").textContent = `数据日期范围：${minDate} ~ ${maxDate}`;
+  // 顶部双语日期范围
+  document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${minDate} ~ ${maxDate}`;
   
-  // 2. 更新日期选择框的范围和默认值
+  // 日期选择框
   const dateInput = document.getElementById("dateSel");
   dateInput.min = minDate;
   dateInput.max = maxDate;
   dateInput.value = minDate;
   dateInput.disabled = false;
   
-  // 启用查询按钮
   document.querySelector("button").disabled = false;
 }
 
 // 初始化Re指数图表
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
-  if(chart) chart.destroy(); // 销毁旧图表
+  if(chart) chart.destroy();
   
   chart = new Chart(ctx,{
     type:"line",
     data:{
       labels:calcData.map(x=>x.date),
       datasets:[{
-        label:`${currentState} 州 Re指数`, 
+        label:`${currentState} 州 Re指数 / ${currentState} State Re Index`, 
         data:calcData.map(x=>x.Re.toFixed(2)),
         borderColor:"#165DFF", 
         backgroundColor:"rgba(22,93,255,0.1)", 
@@ -307,8 +306,8 @@ function initChart() {
       responsive:true, 
       maintainAspectRatio:false, 
       scales:{
-        y:{min:0,max:3, title:{display:true, text:"Re指数"}},
-        x:{ticks:{maxRotation:45, autoSkip:true, maxTicksLimit:30}, title:{display:true, text:"日期"}}
+        y:{min:0,max:3, title:{display:true, text:"Re指数 / Re Index"}},
+        x:{ticks:{maxRotation:45, autoSkip:true, maxTicksLimit:30}, title:{display:true, text:"日期 / Date"}}
       }
     }
   });
@@ -319,7 +318,6 @@ function predict72h(S0,I0,b0,i0) {
   const N=STATE_CONFIG[currentState].population;
   let S=S0, I=I0, predNew=0;
   
-  // 迭代3天预测
   for(let d=0;d<3;d++){
     predNew = b0*I*S/N;
     const recover = COMMON_PARAMS.gamma*I;
@@ -327,7 +325,6 @@ function predict72h(S0,I0,b0,i0) {
     I = Math.max(0, I + predNew - recover);
   }
   
-  // 计算预测Re和增长率
   const predBeta = (I>0&&S>0) ? predNew*N/(I*S) :0;
   const predRe = predBeta/COMMON_PARAMS.gamma * S/N;
   const growthRate = i0===0?0:(predNew-i0)/i0;
@@ -351,57 +348,44 @@ function runQuery() {
   const targetDate = document.getElementById("dateSel").value;
   const targetData = calcData.find(x=>x.date===targetDate);
   
-  if(!targetData) return alert("所选日期无数据，请重新选择");
+  if(!targetData) return alert("所选日期无数据 / No data for selected date，请重新选择");
   
-  // 全州72小时预测
   const statePred = predict72h(targetData.S, targetData.I, targetData.beta, targetData.newSmooth);
   const stateWarn = statePred.Re>1.2 && statePred.growth>0.3;
   
-  // 拆分城乡预测
   const {urbanBeta, ruralBeta, urbanRatio, ruralRatio} = splitUrbanRuralBeta(targetData.beta);
-  const urbanPred = predict72h(
-    targetData.S*urbanRatio, 
-    targetData.I*urbanRatio, 
-    urbanBeta, 
-    targetData.newSmooth*urbanRatio
-  );
-  const ruralPred = predict72h(
-    targetData.S*ruralRatio, 
-    targetData.I*ruralRatio, 
-    ruralBeta, 
-    targetData.newSmooth*ruralRatio
-  );
+  const urbanPred = predict72h(targetData.S*urbanRatio, targetData.I*urbanRatio, urbanBeta, targetData.newSmooth*urbanRatio);
+  const ruralPred = predict72h(targetData.S*ruralRatio, targetData.I*ruralRatio, ruralBeta, targetData.newSmooth*ruralRatio);
   const urbanWarn = urbanPred.Re>1.2 && urbanPred.growth>0.3;
   const ruralWarn = ruralPred.Re>1.2 && ruralPred.growth>0.3;
   
-  // 无人机调度建议
-  const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）":urbanWarn?"⚠️ 优先城市配送（高风险）":"✅ 无需紧急配送（风险可控）";
+  const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）/ Prioritize Rural Delivery":urbanWarn?"⚠️ 优先城市配送（高风险）/ Prioritize Urban Delivery":"✅ 无需紧急配送（风险可控）/ No Urgent Delivery";
 
-  // 渲染结果
+  // 渲染结果（全部双语）
   document.getElementById("resToday").innerHTML=
   `<div class="item">
-    <div><strong>日期</strong>：${targetData.date}</div>
-    <div><strong>当日新增（原始）</strong>：${Math.round(targetData.newRaw)}</div>
-    <div><strong>当前Re指数</strong>：<span style="color:${targetData.Re>1.2?'#F53F3F':'#00B42A'}">${targetData.Re.toFixed(2)}</span></div>
+    <div><strong>日期 Date</strong>：${targetData.date}</div>
+    <div><strong>当日新增（原始）Raw New</strong>：${Math.round(targetData.newRaw)}</div>
+    <div><strong>当前Re指数 Current Re</strong>：<span style="color:${targetData.Re>1.2?'#F53F3F':'#00B42A'}">${targetData.Re.toFixed(2)}</span></div>
   </div>`;
 
   document.getElementById("resForecast").innerHTML=
   `<div class="item">
-    <div><strong>72小时预测Re指数</strong>：${statePred.Re.toFixed(2)}</div>
-    <div><strong>72小时新增预测</strong>：${Math.round(statePred.newCases)}</div>
-    <div><strong>72小时增速</strong>：${(statePred.growth*100).toFixed(1)}%</div>
-    <div><strong>预警状态</strong>：<span style="color:${stateWarn?'#F53F3F':'#00B42A'}">${stateWarn?"⚠️ 触发预警":"✅ 未触发预警"}</span></div>
+    <div><strong>72小时预测Re指数 72h Predicted Re</strong>：${statePred.Re.toFixed(2)}</div>
+    <div><strong>72小时新增预测 72h New Cases</strong>：${Math.round(statePred.newCases)}</div>
+    <div><strong>72小时增速 72h Growth</strong>：${(statePred.growth*100).toFixed(1)}%</div>
+    <div><strong>预警状态 Warning</strong>：<span style="color:${stateWarn?'#F53F3F':'#00B42A'}">${stateWarn?"⚠️ 触发预警 Warning":"✅ 未触发预警 Safe"}</span></div>
   </div>`;
 
   document.getElementById("resUrban").innerHTML=
   `<div class="item">
-    <div><strong>城市</strong>：Re=${urbanPred.Re.toFixed(2)} | 增速=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?"⚠️":"✅"}</div>
-    <div><strong>农村</strong>：Re=${ruralPred.Re.toFixed(2)} | 增速=${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?"⚠️":"✅"}</div>
+    <div><strong>城市 Urban</strong>：Re=${urbanPred.Re.toFixed(2)} | 增速 Growth=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?"⚠️":"✅"}</div>
+    <div><strong>农村 Rural</strong>：Re=${ruralPred.Re.toFixed(2)} | 增速 Growth=${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?"⚠️":"✅"}</div>
   </div>`;
 
   document.getElementById("resUAV").innerHTML=
   `<div class="item">
-    <div><strong>无人机调度建议</strong>：<span style="color:${uavTip.includes('⚠️')?'#F53F3F':'#00B42A'}">${uavTip}</span></div>
+    <div><strong>无人机调度建议 UAV Suggestion</strong>：<span style="color:${uavTip.includes('⚠️')?'#F53F3F':'#00B42A'}">${uavTip}</span></div>
   </div>`;
 }
 
