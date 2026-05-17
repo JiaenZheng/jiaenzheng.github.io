@@ -30,7 +30,8 @@ h3{margin-bottom:12px;color:#303133}
 <div class="container">
   <header>
     <h1>RM‑SIR 美国50州疫情指数监测系统</h1>
-    <p>自动读取CSV真实日期范围 | 大小写自动适配</p>
+    <!-- 已删除“自动忽略文件名大小写”文字，新增动态日期显示区 -->
+    <p id="dateRangeText">数据日期范围：加载中...</p>
   </header>
 
   <div class="card">
@@ -39,55 +40,55 @@ h3{margin-bottom:12px;color:#303133}
       <select id="stateSel" onchange="loadStateData()">
         <option value="Ohio" selected>Ohio（俄亥俄州）</option>
         <option value="Alabama">Alabama（阿拉巴马州）</option>
-        <option value="Alaska">Alaska</option>
-        <option value="Arizona">Arizona</option>
-        <option value="Arkansas">Arkansas</option>
-        <option value="California">California</option>
-        <option value="Colorado">Colorado</option>
-        <option value="Connecticut">Connecticut</option>
-        <option value="Delaware">Delaware</option>
-        <option value="DistrictOfColumbia">DC</option>
-        <option value="Florida">Florida</option>
-        <option value="Georgia">Georgia</option>
-        <option value="Hawaii">Hawaii</option>
-        <option value="Idaho">Idaho</option>
-        <option value="Illinois">Illinois</option>
-        <option value="Indiana">Indiana</option>
-        <option value="Iowa">Iowa</option>
-        <option value="Kansas">Kansas</option>
-        <option value="Kentucky">Kentucky</option>
-        <option value="Louisiana">Louisiana</option>
-        <option value="Maine">Maine</option>
-        <option value="Maryland">Maryland</option>
-        <option value="Massachusetts">Massachusetts</option>
-        <option value="Michigan">Michigan</option>
-        <option value="Minnesota">Minnesota</option>
-        <option value="Mississippi">Mississippi</option>
-        <option value="Missouri">Missouri</option>
-        <option value="Montana">Montana</option>
-        <option value="Nebraska">Nebraska</option>
-        <option value="Nevada">Nevada</option>
-        <option value="NewHampshire">New Hampshire</option>
-        <option value="NewJersey">New Jersey</option>
-        <option value="NewMexico">New Mexico</option>
-        <option value="NewYork">New York</option>
-        <option value="NorthCarolina">North Carolina</option>
-        <option value="NorthDakota">North Dakota</option>
-        <option value="Oklahoma">Oklahoma</option>
-        <option value="Oregon">Oregon</option>
-        <option value="Pennsylvania">Pennsylvania</option>
-        <option value="RhodeIsland">Rhode Island</option>
-        <option value="SouthCarolina">South Carolina</option>
-        <option value="SouthDakota">South Dakota</option>
-        <option value="Tennessee">Tennessee</option>
-        <option value="Texas">Texas</option>
-        <option value="Utah">Utah</option>
-        <option value="Vermont">Vermont</option>
-        <option value="Virginia">Virginia</option>
-        <option value="Washington">Washington</option>
-        <option value="WestVirginia">West Virginia</option>
-        <option value="Wisconsin">Wisconsin</option>
-        <option value="Wyoming">Wyoming</option>
+        <option value="Alaska">Alaska（阿拉斯加州）</option>
+        <option value="Arizona">Arizona（亚利桑那州）</option>
+        <option value="Arkansas">Arkansas（阿肯色州）</option>
+        <option value="California">California（加利福尼亚州）</option>
+        <option value="Colorado">Colorado（科罗拉多州）</option>
+        <option value="Connecticut">Connecticut（康涅狄格州）</option>
+        <option value="Delaware">Delaware（特拉华州）</option>
+        <option value="DistrictOfColumbia">District of Columbia（哥伦比亚特区）</option>
+        <option value="Florida">Florida（佛罗里达州）</option>
+        <option value="Georgia">Georgia（佐治亚州）</option>
+        <option value="Hawaii">Hawaii（夏威夷州）</option>
+        <option value="Idaho">Idaho（爱达荷州）</option>
+        <option value="Illinois">Illinois（伊利诺伊州）</option>
+        <option value="Indiana">Indiana（印第安纳州）</option>
+        <option value="Iowa">Iowa（艾奥瓦州）</option>
+        <option value="Kansas">Kansas（堪萨斯州）</option>
+        <option value="Kentucky">Kentucky（肯塔基州）</option>
+        <option value="Louisiana">Louisiana（路易斯安那州）</option>
+        <option value="Maine">Maine（缅因州）</option>
+        <option value="Maryland">Maryland（马里兰州）</option>
+        <option value="Massachusetts">Massachusetts（马萨诸塞州）</option>
+        <option value="Michigan">Michigan（密歇根州）</option>
+        <option value="Minnesota">Minnesota（明尼苏达州）</option>
+        <option value="Mississippi">Mississippi（密西西比州）</option>
+        <option value="Missouri">Missouri（密苏里州）</option>
+        <option value="Montana">Montana（蒙大拿州）</option>
+        <option value="Nebraska">Nebraska（内布拉斯加州）</option>
+        <option value="Nevada">Nevada（内华达州）</option>
+        <option value="NewHampshire">New Hampshire（新罕布什尔州）</option>
+        <option value="NewJersey">New Jersey（新泽西州）</option>
+        <option value="NewMexico">New Mexico（新墨西哥州）</option>
+        <option value="NewYork">New York（纽约州）</option>
+        <option value="NorthCarolina">North Carolina（北卡罗来纳州）</option>
+        <option value="NorthDakota">North Dakota（北达科他州）</option>
+        <option value="Oklahoma">Oklahoma（俄克拉荷马州）</option>
+        <option value="Oregon">Oregon（俄勒冈州）</option>
+        <option value="Pennsylvania">Pennsylvania（宾夕法尼亚州）</option>
+        <option value="RhodeIsland">Rhode Island（罗得岛州）</option>
+        <option value="SouthCarolina">South Carolina（南卡罗来纳州）</option>
+        <option value="SouthDakota">South Dakota（南达科他州）</option>
+        <option value="Tennessee">Tennessee（田纳西州）</option>
+        <option value="Texas">Texas（得克萨斯州）</option>
+        <option value="Utah">Utah（犹他州）</option>
+        <option value="Vermont">Vermont（佛蒙特州）</option>
+        <option value="Virginia">Virginia（弗吉尼亚州）</option>
+        <option value="Washington">Washington（华盛顿州）</option>
+        <option value="WestVirginia">West Virginia（西弗吉尼亚州）</option>
+        <option value="Wisconsin">Wisconsin（威斯康星州）</option>
+        <option value="Wyoming">Wyoming（怀俄明州）</option>
       </select>
       <label>选择日期 / Select Date：</label>
       <input type="date" id="dateSel" disabled>
@@ -164,6 +165,7 @@ const COMMON_PARAMS = { gamma:0.2, smoothWindow:7, reWarnThreshold:1.2, growthWa
 
 let currentState = "Ohio", rawData = [], calcData = [], chart = null;
 
+// 日期格式化
 function formatDate(d) {
   const date = new Date(d.replace(/\//g, '-'));
   const y = date.getFullYear();
@@ -172,26 +174,38 @@ function formatDate(d) {
   return `${y}-${m}-${day}`;
 }
 
+// 生成大小写适配的文件路径
 function getPaths(bn) {
   return [`${bn}.csv`, `${bn.charAt(0).toUpperCase()+bn.slice(1)}.csv`, `${bn.toUpperCase()}.csv`];
 }
 
+// 递归加载CSV（适配大小写）
 function tryLoad(paths, idx=0) {
   if(idx >= paths.length) {
-    alert(`${currentState} 无数据，切回Ohio`);
+    alert(`${currentState} 无有效数据，自动切回Ohio州`);
     document.getElementById("stateSel").value = "Ohio";
     loadStateData();
     return;
   }
-  Papa.parse(paths[idx], { download:true, header:true, skipEmptyLines:true,
+  Papa.parse(paths[idx], { 
+    download:true, 
+    header:true, 
+    skipEmptyLines:true,
     complete:r=>{
-      const d = r.data.filter(x=>x.date&&x.cases&&!isNaN(+x.cases)).map(x=>({date:formatDate(x.date), totalCases:+x.cases})).sort((a,b)=>new Date(a.date)-new Date(b.date));
-      if(d.length===0) return tryLoad(paths, idx+1);
-      rawData = d;
+      // 过滤有效数据并排序
+      const validData = r.data.filter(x=>x.date&&x.cases&&!isNaN(+x.cases))
+                              .map(x=>({date:formatDate(x.date), totalCases:+x.cases}))
+                              .sort((a,b)=>new Date(a.date)-new Date(b.date));
+      
+      if(validData.length===0) return tryLoad(paths, idx+1);
+      
+      rawData = validData;
       calculateData();
-      setDateRange();
+      setDateRange(); // 同步更新日期选择框和顶部显示
       initChart();
       runQuery();
+      
+      // 隐藏加载、显示结果
       document.getElementById("loading").style.display="none";
       document.getElementById("resultContainer").style.display="grid";
     },
@@ -199,107 +213,199 @@ function tryLoad(paths, idx=0) {
   });
 }
 
+// 加载州数据（核心入口）
 function loadStateData() {
   currentState = document.getElementById("stateSel").value;
+  
+  // 重置界面状态
   document.getElementById("loading").style.display="block";
   document.getElementById("resultContainer").style.display="none";
   document.getElementById("dateSel").value="";
   document.getElementById("dateSel").disabled=true;
   document.querySelector("button").disabled=true;
+  document.getElementById("dateRangeText").textContent = "数据日期范围：加载中...";
+  
+  // 加载对应州的CSV
   tryLoad(getPaths(STATE_CONFIG[currentState].csvBaseName));
 }
 
+// 计算SIR和Re指数
 function calculateData() {
   const N = STATE_CONFIG[currentState].population;
   let S=N, I=0;
+  
+  // 计算每日新增
   const dailyRaw = rawData.map((r,i)=>({
     date:r.date,
     newRaw: Math.max(0, i>0 ? r.totalCases-rawData[i-1].totalCases : r.totalCases)
   }));
-  const smooth = dailyRaw.map((r,i)=>{
-    let s=0,c=0;
-    const start=Math.max(0,i-6);
-    for(let j=start;j<=i;j++){s+=dailyRaw[j].newRaw;c++;}
-    return {...r, newSmooth:s/c};
+  
+  // 7日平滑新增
+  const smoothData = dailyRaw.map((r,i)=>{
+    let sum=0, count=0;
+    const start=Math.max(0,i-6); // 7天窗口
+    for(let j=start;j<=i;j++){sum+=dailyRaw[j].newRaw;count++;}
+    return {...r, newSmooth:sum/count};
   });
-  calcData = smooth.map(r=>{
+  
+  // 计算SIR和Re
+  calcData = smoothData.map(r=>{
     const beta = (I>0&&S>0) ? (r.newSmooth*N)/(I*S) : 0;
     const Rt = beta/COMMON_PARAMS.gamma;
     const Re = Rt * S/N;
+    
     const res = {...r, S, I, beta, Rt, Re};
-    const rec = COMMON_PARAMS.gamma*I;
+    
+    // 更新SIR状态
+    const recover = COMMON_PARAMS.gamma*I;
     S = Math.max(0, S - r.newSmooth);
-    I = Math.max(0, I + r.newSmooth - rec);
+    I = Math.max(0, I + r.newSmooth - recover);
+    
     return res;
   });
 }
 
+// 设置日期范围（同步更新顶部显示+日期选择框）
 function setDateRange() {
-  const min = calcData[0].date;
-  const max = calcData[calcData.length-1].date;
-  const el = document.getElementById("dateSel");
-  el.min=min; el.max=max; el.value=min; el.disabled=false;
-  document.querySelector("button").disabled=false;
+  const minDate = calcData[0].date;
+  const maxDate = calcData[calcData.length-1].date;
+  
+  // 1. 更新顶部显示的日期范围（随州动态变化）
+  document.getElementById("dateRangeText").textContent = `数据日期范围：${minDate} ~ ${maxDate}`;
+  
+  // 2. 更新日期选择框的范围和默认值
+  const dateInput = document.getElementById("dateSel");
+  dateInput.min = minDate;
+  dateInput.max = maxDate;
+  dateInput.value = minDate;
+  dateInput.disabled = false;
+  
+  // 启用查询按钮
+  document.querySelector("button").disabled = false;
 }
 
+// 初始化Re指数图表
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
-  if(chart) chart.destroy();
+  if(chart) chart.destroy(); // 销毁旧图表
+  
   chart = new Chart(ctx,{
     type:"line",
     data:{
       labels:calcData.map(x=>x.date),
-      datasets:[{label:`${currentState} Re指数`, data:calcData.map(x=>x.Re.toFixed(2)),
-        borderColor:"#165DFF", backgroundColor:"rgba(22,93,255,0.1)", fill:true, tension:0.3, borderWidth:2}]
+      datasets:[{
+        label:`${currentState} 州 Re指数`, 
+        data:calcData.map(x=>x.Re.toFixed(2)),
+        borderColor:"#165DFF", 
+        backgroundColor:"rgba(22,93,255,0.1)", 
+        fill:true, 
+        tension:0.3, 
+        borderWidth:2
+      }]
     },
-    options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:3},x:{ticks:{maxRotation:45}}}}
+    options:{
+      responsive:true, 
+      maintainAspectRatio:false, 
+      scales:{
+        y:{min:0,max:3, title:{display:true, text:"Re指数"}},
+        x:{ticks:{maxRotation:45, autoSkip:true, maxTicksLimit:30}, title:{display:true, text:"日期"}}
+      }
+    }
   });
 }
 
+// 72小时预测函数
 function predict72h(S0,I0,b0,i0) {
   const N=STATE_CONFIG[currentState].population;
-  let S=S0,I=I0,p=0;
-  for(let d=0;d<3;d++){p=b0*I*S/N; S-=p; I+=p-COMMON_PARAMS.gamma*I;}
-  const b=(I>0&&S>0) ? p*N/I/S :0;
-  const Re=b/COMMON_PARAMS.gamma * S/N;
-  const g=i0===0?0:(p-i0)/i0;
-  return {Re,p,g};
+  let S=S0, I=I0, predNew=0;
+  
+  // 迭代3天预测
+  for(let d=0;d<3;d++){
+    predNew = b0*I*S/N;
+    const recover = COMMON_PARAMS.gamma*I;
+    S = Math.max(0, S - predNew);
+    I = Math.max(0, I + predNew - recover);
+  }
+  
+  // 计算预测Re和增长率
+  const predBeta = (I>0&&S>0) ? predNew*N/(I*S) :0;
+  const predRe = predBeta/COMMON_PARAMS.gamma * S/N;
+  const growthRate = i0===0?0:(predNew-i0)/i0;
+  
+  return {Re:predRe, newCases:predNew, growth:growthRate};
 }
 
-function splitB(b) {
-  const r=STATE_CONFIG[currentState].ruralRatio;
-  const u=1-r;
-  const ub=b/(u+COMMON_PARAMS.ruralUrbanRatio*r);
-  const rb=COMMON_PARAMS.ruralUrbanRatio*ub;
-  return {ub,rb,u,r};
+// 拆分城乡传播系数
+function splitUrbanRuralBeta(totalBeta) {
+  const ruralRatio = STATE_CONFIG[currentState].ruralRatio;
+  const urbanRatio = 1 - ruralRatio;
+  
+  const urbanBeta = totalBeta / (urbanRatio + COMMON_PARAMS.ruralUrbanRatio*ruralRatio);
+  const ruralBeta = COMMON_PARAMS.ruralUrbanRatio * urbanBeta;
+  
+  return {urbanBeta, ruralBeta, urbanRatio, ruralRatio};
 }
 
+// 主查询函数
 function runQuery() {
-  const d=document.getElementById("dateSel").value;
-  const t=calcData.find(x=>x.date===d);
-  if(!t) return alert("无数据");
-  const state=predict72h(t.S,t.I,t.beta,t.newSmooth);
-  const stateW=state.Re>1.2&&state.growth>0.3;
-  const {ub,rb,u,r}=splitB(t.beta);
-  const up=predict72h(t.S*u,t.I*u,ub,t.newSmooth*u);
-  const rp=predict72h(t.S*r,t.I*r,rb,t.newSmooth*r);
-  const uw=up.Re>1.2&&up.growth>0.3;
-  const rw=rp.Re>1.2&&rp.growth>0.3;
-  const tip=rw?"⚠️优先农村":uw?"⚠️优先城市":"✅正常";
+  const targetDate = document.getElementById("dateSel").value;
+  const targetData = calcData.find(x=>x.date===targetDate);
+  
+  if(!targetData) return alert("所选日期无数据，请重新选择");
+  
+  // 全州72小时预测
+  const statePred = predict72h(targetData.S, targetData.I, targetData.beta, targetData.newSmooth);
+  const stateWarn = statePred.Re>1.2 && statePred.growth>0.3;
+  
+  // 拆分城乡预测
+  const {urbanBeta, ruralBeta, urbanRatio, ruralRatio} = splitUrbanRuralBeta(targetData.beta);
+  const urbanPred = predict72h(
+    targetData.S*urbanRatio, 
+    targetData.I*urbanRatio, 
+    urbanBeta, 
+    targetData.newSmooth*urbanRatio
+  );
+  const ruralPred = predict72h(
+    targetData.S*ruralRatio, 
+    targetData.I*ruralRatio, 
+    ruralBeta, 
+    targetData.newSmooth*ruralRatio
+  );
+  const urbanWarn = urbanPred.Re>1.2 && urbanPred.growth>0.3;
+  const ruralWarn = ruralPred.Re>1.2 && ruralPred.growth>0.3;
+  
+  // 无人机调度建议
+  const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）":urbanWarn?"⚠️ 优先城市配送（高风险）":"✅ 无需紧急配送（风险可控）";
 
+  // 渲染结果
   document.getElementById("resToday").innerHTML=
-  `<div class="item"><div>日期:${t.date}</div><div>新增:${Math.round(t.newRaw)}</div><div>Re:${t.Re.toFixed(2)}</div></div>`;
+  `<div class="item">
+    <div><strong>日期</strong>：${targetData.date}</div>
+    <div><strong>当日新增（原始）</strong>：${Math.round(targetData.newRaw)}</div>
+    <div><strong>当前Re指数</strong>：<span style="color:${targetData.Re>1.2?'#F53F3F':'#00B42A'}">${targetData.Re.toFixed(2)}</span></div>
+  </div>`;
 
   document.getElementById("resForecast").innerHTML=
-  `<div class="item"><div>72h Re:${state.Re.toFixed(2)}</div><div>新增:${Math.round(state.p)}</div><div>增速:${(state.g*100).toFixed(1)}%</div><div>${stateW?"⚠️预警":"✅正常"}</div></div>`;
+  `<div class="item">
+    <div><strong>72小时预测Re指数</strong>：${statePred.Re.toFixed(2)}</div>
+    <div><strong>72小时新增预测</strong>：${Math.round(statePred.newCases)}</div>
+    <div><strong>72小时增速</strong>：${(statePred.growth*100).toFixed(1)}%</div>
+    <div><strong>预警状态</strong>：<span style="color:${stateWarn?'#F53F3F':'#00B42A'}">${stateWarn?"⚠️ 触发预警":"✅ 未触发预警"}</span></div>
+  </div>`;
 
   document.getElementById("resUrban").innerHTML=
-  `<div class="item"><div>城市 Re:${up.Re.toFixed(2)} ${uw?"⚠️":"✅"}</div><div>农村 Re:${rp.Re.toFixed(2)} ${rw?"⚠️":"✅"}</div></div>`;
+  `<div class="item">
+    <div><strong>城市</strong>：Re=${urbanPred.Re.toFixed(2)} | 增速=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?"⚠️":"✅"}</div>
+    <div><strong>农村</strong>：Re=${ruralPred.Re.toFixed(2)} | 增速=${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?"⚠️":"✅"}</div>
+  </div>`;
 
   document.getElementById("resUAV").innerHTML=
-  `<div class="item"><div>调度建议:${tip}</div></div>`;
+  `<div class="item">
+    <div><strong>无人机调度建议</strong>：<span style="color:${uavTip.includes('⚠️')?'#F53F3F':'#00B42A'}">${uavTip}</span></div>
+  </div>`;
 }
 
+// 页面加载默认加载Ohio州
 window.onload=()=>loadStateData();
 </script>
 </body>
