@@ -30,7 +30,7 @@ h3{margin-bottom:12px;color:#303133}
 <div class="container">
   <header>
     <h1>RM‑SIR 美国多州疫情指数监测与无人机干预调度系统 / RM‑SIR US Multi‑State Epidemic Monitoring & UAV Dispatch System</h1>
-    <p>10州完整版 | 保留Ohio原参数 | 自动适配各州起始日期</p>
+    <p>双州版 | 自动忽略文件名大小写 | 日期强制范围</p>
   </header>
 
   <div class="card">
@@ -39,14 +39,6 @@ h3{margin-bottom:12px;color:#303133}
       <select id="stateSel" onchange="loadStateData()">
         <option value="Ohio" selected>Ohio（俄亥俄州）</option>
         <option value="Alabama">Alabama（阿拉巴马州）</option>
-        <option value="California">California（加利福尼亚州）</option>
-        <option value="Texas">Texas（得克萨斯州）</option>
-        <option value="NewYork">New York（纽约州）</option>
-        <option value="Florida">Florida（佛罗里达州）</option>
-        <option value="Illinois">Illinois（伊利诺伊州）</option>
-        <option value="Pennsylvania">Pennsylvania（宾夕法尼亚州）</option>
-        <option value="Georgia">Georgia（佐治亚州）</option>
-        <option value="NorthCarolina">North Carolina（北卡罗来纳州）</option>
       </select>
       <label>选择日期 / Select Date：</label>
       <input type="date" id="dateSel" disabled>
@@ -80,57 +72,17 @@ h3{margin-bottom:12px;color:#303133}
 </div>
 
 <script>
-// 美国10州参数配置（Ohio保留你原有的数值，其他州用2024官方数据）
+// 基础配置（无需关注大小写，后续自动处理）
 const STATE_CONFIG = {
   Ohio: {
-    population: 11700000,    // 保留你原有的Ohio州人口数
-    csvPath: "ohio_data.csv",// 原CSV路径不变
-    ruralRatio: 0.2          // 保留你原有的Ohio州农村比例（20%）
+    population: 11700000,
+    csvBaseName: "ohio_data", // 仅保留文件名主体，不带后缀
+    ruralRatio: 0.2
   },
   Alabama: {
-    population: 5024279,     // 官方数据
-    csvPath: "alabama_data.csv",
-    ruralRatio: 0.35         // 官方农村比例（35%）
-  },
-  California: {
-    population: 39538223,    // 官方数据（美国第一人口大州）
-    csvPath: "california_data.csv",
-    ruralRatio: 0.15         // 官方农村比例（15%）
-  },
-  Texas: {
-    population: 29145505,    // 官方数据（第二人口大州）
-    csvPath: "texas_data.csv",
-    ruralRatio: 0.18         // 官方农村比例（18%）
-  },
-  NewYork: {
-    population: 20201249,    // 官方数据
-    csvPath: "newyork_data.csv",
-    ruralRatio: 0.12         // 官方农村比例（12%）
-  },
-  Florida: {
-    population: 21538187,    // 官方数据
-    csvPath: "florida_data.csv",
-    ruralRatio: 0.14         // 官方农村比例（14%）
-  },
-  Illinois: {
-    population: 12812508,    // 官方数据
-    csvPath: "illinois_data.csv",
-    ruralRatio: 0.19         // 官方农村比例（19%）
-  },
-  Pennsylvania: {
-    population: 12801989,    // 官方数据
-    csvPath: "pennsylvania_data.csv",
-    ruralRatio: 0.21         // 官方农村比例（21%）
-  },
-  Georgia: {
-    population: 10711908,    // 官方数据
-    csvPath: "georgia_data.csv",
-    ruralRatio: 0.24         // 官方农村比例（24%）
-  },
-  NorthCarolina: {
-    population: 10439388,    // 官方数据
-    csvPath: "northcarolina_data.csv",
-    ruralRatio: 0.26         // 官方农村比例（26%）
+    population: 5024279,
+    csvBaseName: "alabama_data", // 统一用小写主体，后续自动生成多种格式
+    ruralRatio: 0.35
   }
 };
 
@@ -147,7 +99,7 @@ let rawData = [];
 let calcData = [];
 let chart = null;
 
-// 日期统一格式：适配斜杠/横杠，补前导0
+// 1. 日期格式化
 function formatDate(dateStr) {
   const date = new Date(dateStr.replace(/\//g, '-'));
   const year = date.getFullYear();
@@ -156,24 +108,34 @@ function formatDate(dateStr) {
   return `${year}-${month}-${day}`;
 }
 
-// 加载对应州CSV数据
-function loadStateData() {
-  currentState = document.getElementById("stateSel").value;
-  const stateCfg = STATE_CONFIG[currentState];
-  
-  // 【修复】切换州立刻清空日期、禁用查询，防止旧日期干扰
-  document.getElementById("dateSel").value = "";
-  document.getElementById("dateSel").disabled = true;
-  document.querySelector("button").disabled = true;
-  document.getElementById("loading").style.display = "block";
-  document.getElementById("resultContainer").style.display = "none";
+// 2. 核心功能：生成3种常见文件名格式（忽略大小写）
+function getPossibleCsvPaths(baseName) {
+  return [
+    `${baseName}.csv`,                  // 全小写：alabama_data.csv
+    `${baseName.charAt(0).toUpperCase() + baseName.slice(1)}.csv`, // 首字母大写：Alabama_data.csv
+    `${baseName.toUpperCase()}.csv`     // 全大写：ALABAMA_data.csv
+  ];
+}
 
-  Papa.parse(stateCfg.csvPath, {
+// 3. 递归尝试加载文件（直到找到有效文件或遍历完所有格式）
+function tryLoadCsv(csvPaths, stateCfg, index = 0) {
+  // 所有格式都尝试过仍失败
+  if (index >= csvPaths.length) {
+    alert(`${currentState}州文件加载失败（已尝试所有大小写格式），自动切回Ohio`);
+    document.getElementById("stateSel").value = "Ohio";
+    loadStateData();
+    return;
+  }
+
+  const currentCsvPath = csvPaths[index];
+  Papa.parse(currentCsvPath, {
     download: true,
     header: true,
     skipEmptyLines: true,
+    timeout: 3000, // 3秒超时，避免长时间等待
     complete: (results) => {
-      rawData = results.data
+      // 过滤有效数据（至少1行才视为成功）
+      const validData = results.data
         .filter(row => row.date && row.cases && !isNaN(parseInt(row.cases)))
         .map(row => ({
           date: formatDate(row.date.trim()),
@@ -181,29 +143,62 @@ function loadStateData() {
         }))
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      if (rawData.length === 0) {
-        alert(`未找到${currentState}州数据，请检查${stateCfg.csvPath}`);
-        return;
+      if (validData.length > 0) {
+        rawData = validData;
+        calculateData(stateCfg);
+        setDateRange();
+        initChart();
+        runQuery();
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("resultContainer").style.display = "grid";
+      } else {
+        // 当前格式无效，尝试下一种
+        tryLoadCsv(csvPaths, stateCfg, index + 1);
       }
-
-      calculateData();
-      initPage();
-      document.getElementById("loading").style.display = "none";
-      document.getElementById("resultContainer").style.display = "grid";
     },
-    error: (err) => {
-      alert(`${currentState}州数据加载失败：${err.message}`);
+    error: () => {
+      // 请求失败，尝试下一种格式
+      tryLoadCsv(csvPaths, stateCfg, index + 1);
     }
   });
 }
 
-// 核心计算（SIR模型+Re指数）
-function calculateData() {
+// 4. 加载州数据（触发文件名自动适配）
+function loadStateData() {
+  currentState = document.getElementById("stateSel").value;
   const stateCfg = STATE_CONFIG[currentState];
+  
+  // 重置界面状态
+  document.getElementById("dateSel").value = "";
+  document.getElementById("dateSel").disabled = true;
+  document.querySelector("button").disabled = true;
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("resultContainer").style.display = "none";
+
+  // 生成3种可能的文件名，开始尝试加载
+  const possibleCsvPaths = getPossibleCsvPaths(stateCfg.csvBaseName);
+  tryLoadCsv(possibleCsvPaths, stateCfg);
+}
+
+// 5. 设置日期范围（仅允许CSV内日期）
+function setDateRange() {
+  const dateInput = document.getElementById("dateSel");
+  const minDate = calcData[0].date;
+  const maxDate = calcData[calcData.length - 1].date;
+  dateInput.min = minDate;
+  dateInput.max = maxDate;
+  dateInput.value = minDate;
+  dateInput.disabled = false;
+  document.querySelector("button").disabled = false;
+}
+
+// 6. 核心计算（SIR模型+Re指数）
+function calculateData(stateCfg) {
   const N = stateCfg.population;
   let S = N;
   let I = 0;
 
+  // 计算每日原始新增
   const dailyRaw = rawData.map((row, index) => {
     const prevTotal = index > 0 ? rawData[index - 1].totalCases : 0;
     return {
@@ -213,6 +208,7 @@ function calculateData() {
     };
   });
 
+  // 7日平滑新增
   const smoothDaily = dailyRaw.map((row, index) => {
     let sum = 0, count = 0;
     const startIdx = Math.max(0, index - COMMON_PARAMS.smoothWindow + 1);
@@ -228,6 +224,7 @@ function calculateData() {
     };
   });
 
+  // 计算S/I/β/Re
   calcData = smoothDaily.map(row => {
     const newIn = row.newSmooth;
     const beta = (I > 0 && S > 0) ? (newIn * N) / (I * S) : 0;
@@ -246,6 +243,7 @@ function calculateData() {
       Re: Re
     };
 
+    // SIR迭代更新
     const newRecover = COMMON_PARAMS.gamma * I;
     S = Math.max(0, S - newIn);
     I = Math.max(0, I + newIn - newRecover);
@@ -254,7 +252,7 @@ function calculateData() {
   });
 }
 
-// 初始化Re趋势图
+// 7. 初始化Re趋势图
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
   if (chart) chart.destroy();
@@ -264,7 +262,7 @@ function initChart() {
     data: {
       labels: calcData.map(item => item.date),
       datasets: [{
-        label: `${currentState}州 Re指数 / ${currentState} State Re Index`,
+        label: `${currentState}州 Re指数`,
         data: calcData.map(item => item.Re.toFixed(2)),
         borderColor: "#165DFF",
         backgroundColor: "rgba(22, 93, 255, 0.1)",
@@ -277,14 +275,14 @@ function initChart() {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        y: { min: 0, max: 3, title: { display: true, text: "Re指数 / Re Index" } },
-        x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 30 }, title: { display: true, text: "日期 / Date" } }
+        y: { min: 0, max: 3 },
+        x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 30 } }
       }
     }
   });
 }
 
-// 72小时（3天）疫情预测
+// 8. 72小时预测
 function predict72h(S0, I0, beta0, newIn0) {
   const stateCfg = STATE_CONFIG[currentState];
   const N = stateCfg.population;
@@ -304,7 +302,7 @@ function predict72h(S0, I0, beta0, newIn0) {
   return { predRe, predNew, growth };
 }
 
-// 城乡传播系数拆分
+// 9. 城乡传播系数拆分
 function splitUrbanRuralBeta(totalBeta) {
   const stateCfg = STATE_CONFIG[currentState];
   const ruralRatio = stateCfg.ruralRatio;
@@ -315,22 +313,19 @@ function splitUrbanRuralBeta(totalBeta) {
   return { urbanBeta, ruralBeta, urbanRatio, ruralRatio };
 }
 
-// 主查询函数
+// 10. 主查询函数
 function runQuery() {
   const targetDate = document.getElementById("dateSel").value;
   const target = calcData.find(item => item.date === targetDate);
 
-  if (!target) {
-    alert("所选日期无数据 / No data for selected date");
-    return;
-  }
-
   const stateCfg = STATE_CONFIG[currentState];
   const { urbanBeta, ruralBeta, urbanRatio, ruralRatio } = splitUrbanRuralBeta(target.beta);
   
+  // 全州预测
   const statePred = predict72h(target.S, target.I, target.beta, target.newSmooth);
   const stateWarn = statePred.predRe > COMMON_PARAMS.reWarnThreshold && statePred.growth > COMMON_PARAMS.growthWarnThreshold;
 
+  // 城乡预测
   const urbanPop = stateCfg.population * urbanRatio;
   const ruralPop = stateCfg.population * ruralRatio;
   const urbanI = target.I * urbanRatio;
@@ -345,16 +340,17 @@ function runQuery() {
   const urbanWarn = urbanPred.predRe > COMMON_PARAMS.reWarnThreshold && urbanPred.growth > COMMON_PARAMS.growthWarnThreshold;
   const ruralWarn = ruralPred.predRe > COMMON_PARAMS.reWarnThreshold && ruralPred.growth > COMMON_PARAMS.growthWarnThreshold;
 
+  // 调度建议
   const uavTip = ruralWarn 
-    ? "⚠️ 优先农村配送（农村高风险）/ Prioritize Rural Delivery (High Risk)"
+    ? "⚠️ 优先农村配送（农村高风险）"
     : urbanWarn 
-      ? "⚠️ 优先城市配送（城市高风险）/ Prioritize Urban Delivery (High Risk)"
-      : "✅ 无需紧急配送（风险可控）/ No Urgent Delivery (Controllable Risk)";
+      ? "⚠️ 优先城市配送（城市高风险）"
+      : "✅ 无需紧急配送（风险可控）";
 
   renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urbanWarn, ruralWarn, uavTip);
 }
 
-// 渲染界面
+// 11. 渲染界面
 function renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urbanWarn, ruralWarn, uavTip) {
   document.getElementById("resToday").innerHTML = `
     <div class="item"><div>日期 / Date</div><div style="font-weight:bold">${target.date}</div></div>
@@ -366,12 +362,12 @@ function renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urban
     <div class="item"><div>72h预测Re / 72h Predicted Re</div><div style="font-weight:bold">${statePred.predRe.toFixed(2)}</div></div>
     <div class="item"><div>72h新增预测 / 72h New Cases Prediction</div><div style="font-weight:bold">${Math.round(statePred.predNew)}</div></div>
     <div class="item"><div>72h增速 / 72h Growth Rate</div><div style="font-weight:bold">${(statePred.growth*100).toFixed(1)}%</div></div>
-    <div class="item"><div>预警状态 / Warning Status</div><div style="font-weight:bold;color:${stateWarn?"#F53F3F":"#00B42A"}">${stateWarn?"⚠️触发预警 / Warning Triggered":"✅未触发预警 / No Warning"}</div></div>
+    <div class="item"><div>预警状态 / Warning Status</div><div style="font-weight:bold;color:${stateWarn?"#F53F3F":"#00B42A"}">${stateWarn?"⚠️触发预警":"✅正常"}</div></div>
   `;
 
   document.getElementById("resUrban").innerHTML = `
-    <div class="item"><div>城市 / Urban</div><div>Re: ${urbanPred.predRe.toFixed(2)} | 增速 / Growth: ${(urbanPred.growth*100).toFixed(1)}% | ${urbanWarn?"⚠️":"✅"}</div></div>
-    <div class="item"><div>农村 / Rural</div><div>Re: ${ruralPred.predRe.toFixed(2)} | 增速 / Growth: ${(ruralPred.growth*100).toFixed(1)}% | ${ruralWarn?"⚠️":"✅"}</div></div>
+    <div class="item"><div>城市 / Urban</div><div>Re: ${urbanPred.predRe.toFixed(2)} | 增速: ${(urbanPred.growth*100).toFixed(1)}% | ${urbanWarn?"⚠️":"✅"}</div></div>
+    <div class="item"><div>农村 / Rural</div><div>Re: ${ruralPred.predRe.toFixed(2)} | 增速: ${(ruralPred.growth*100).toFixed(1)}% | ${ruralWarn?"⚠️":"✅"}</div></div>
   `;
 
   document.getElementById("resUAV").innerHTML = `
@@ -379,22 +375,7 @@ function renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urban
   `;
 }
 
-// 初始化页面（加载完数据后，强制设置正确日期）
-function initPage() {
-  const minDate = calcData[0].date;
-  const maxDate = calcData[calcData.length - 1].date;
-  const dateInput = document.getElementById("dateSel");
-  
-  dateInput.min = minDate;
-  dateInput.max = maxDate;
-  dateInput.value = minDate; // 自动选当前州**最早的一天**
-  dateInput.disabled = false;
-  document.querySelector("button").disabled = false;
-
-  initChart();
-  runQuery();
-}
-
+// 页面加载默认加载Ohio州数据
 window.onload = () => loadStateData();
 </script>
 </body>
