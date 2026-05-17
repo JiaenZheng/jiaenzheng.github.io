@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RM‑SIR 美国多州疫情指数监测系统</title>
+<title>RM‑SIR 美国50州疫情指数监测系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -15,7 +15,7 @@ header h1{font-size:24px;margin-bottom:8px}
 header p{opacity:0.9;font-size:14px}
 .card{background:#fff;padding:20px;border-radius:16px;margin-bottom:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
 .form{display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
-select,input[type="date"]{padding:10px 14px;border:1px solid #dcdfe6;border-radius:8px;font-size:14px;min-width:160px}
+select,input[type="date"]{padding:10px 14px;border:1px solid #dcdfe6;border-radius:8px;font-size:14px;min-width:200px}
 button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
 .full{grid-column:1 / -1}
@@ -29,16 +29,66 @@ h3{margin-bottom:12px;color:#303133}
 <body>
 <div class="container">
   <header>
-    <h1>RM‑SIR 美国多州疫情指数监测与无人机干预调度系统 / RM‑SIR US Multi‑State Epidemic Monitoring & UAV Dispatch System</h1>
-    <p>双州版 | 自动忽略文件名大小写 | 日期强制范围</p>
+    <h1>RM‑SIR 美国50州疫情指数监测与无人机干预调度系统 / RM‑SIR US 50 States Epidemic Monitoring & UAV Dispatch System</h1>
+    <p>2020‑03‑04 ~ 2022‑01‑25 | 自动忽略文件名大小写 | 日期范围强制限制</p>
   </header>
 
   <div class="card">
     <div class="form">
-      <label>选择州 / Select State：</label>
+      <label>选择州/地区 / Select State/Territory：</label>
       <select id="stateSel" onchange="loadStateData()">
-        <option value="Ohio" selected>Ohio（俄亥俄州）</option>
+        <!-- 美国50州 + DC，按字母顺序排列 -->
         <option value="Alabama">Alabama（阿拉巴马州）</option>
+        <option value="Alaska">Alaska（阿拉斯加州）</option>
+        <option value="Arizona">Arizona（亚利桑那州）</option>
+        <option value="Arkansas">Arkansas（阿肯色州）</option>
+        <option value="California">California（加利福尼亚州）</option>
+        <option value="Colorado">Colorado（科罗拉多州）</option>
+        <option value="Connecticut">Connecticut（康涅狄格州）</option>
+        <option value="Delaware">Delaware（特拉华州）</option>
+        <option value="DistrictOfColumbia">District of Columbia（哥伦比亚特区）</option>
+        <option value="Florida">Florida（佛罗里达州）</option>
+        <option value="Georgia">Georgia（佐治亚州）</option>
+        <option value="Hawaii">Hawaii（夏威夷州）</option>
+        <option value="Idaho">Idaho（爱达荷州）</option>
+        <option value="Illinois">Illinois（伊利诺伊州）</option>
+        <option value="Indiana">Indiana（印第安纳州）</option>
+        <option value="Iowa">Iowa（艾奥瓦州）</option>
+        <option value="Kansas">Kansas（堪萨斯州）</option>
+        <option value="Kentucky">Kentucky（肯塔基州）</option>
+        <option value="Louisiana">Louisiana（路易斯安那州）</option>
+        <option value="Maine">Maine（缅因州）</option>
+        <option value="Maryland">Maryland（马里兰州）</option>
+        <option value="Massachusetts">Massachusetts（马萨诸塞州）</option>
+        <option value="Michigan">Michigan（密歇根州）</option>
+        <option value="Minnesota">Minnesota（明尼苏达州）</option>
+        <option value="Mississippi">Mississippi（密西西比州）</option>
+        <option value="Missouri">Missouri（密苏里州）</option>
+        <option value="Montana">Montana（蒙大拿州）</option>
+        <option value="Nebraska">Nebraska（内布拉斯加州）</option>
+        <option value="Nevada">Nevada（内华达州）</option>
+        <option value="NewHampshire">New Hampshire（新罕布什尔州）</option>
+        <option value="NewJersey">New Jersey（新泽西州）</option>
+        <option value="NewMexico">New Mexico（新墨西哥州）</option>
+        <option value="NewYork">New York（纽约州）</option>
+        <option value="NorthCarolina">North Carolina（北卡罗来纳州）</option>
+        <option value="NorthDakota">North Dakota（北达科他州）</option>
+        <option value="Ohio" selected>Ohio（俄亥俄州）</option>
+        <option value="Oklahoma">Oklahoma（俄克拉荷马州）</option>
+        <option value="Oregon">Oregon（俄勒冈州）</option>
+        <option value="Pennsylvania">Pennsylvania（宾夕法尼亚州）</option>
+        <option value="RhodeIsland">Rhode Island（罗得岛州）</option>
+        <option value="SouthCarolina">South Carolina（南卡罗来纳州）</option>
+        <option value="SouthDakota">South Dakota（南达科他州）</option>
+        <option value="Tennessee">Tennessee（田纳西州）</option>
+        <option value="Texas">Texas（得克萨斯州）</option>
+        <option value="Utah">Utah（犹他州）</option>
+        <option value="Vermont">Vermont（佛蒙特州）</option>
+        <option value="Virginia">Virginia（弗吉尼亚州）</option>
+        <option value="Washington">Washington（华盛顿州）</option>
+        <option value="WestVirginia">West Virginia（西弗吉尼亚州）</option>
+        <option value="Wisconsin">Wisconsin（威斯康星州）</option>
+        <option value="Wyoming">Wyoming（怀俄明州）</option>
       </select>
       <label>选择日期 / Select Date：</label>
       <input type="date" id="dateSel" disabled>
@@ -72,17 +122,263 @@ h3{margin-bottom:12px;color:#303133}
 </div>
 
 <script>
-// 基础配置（无需关注大小写，后续自动处理）
+// 美国50州+DC 官方参数配置（2024年最新数据）
 const STATE_CONFIG = {
-  Ohio: {
-    population: 11700000,
-    csvBaseName: "ohio_data", // 仅保留文件名主体，不带后缀
-    ruralRatio: 0.2
-  },
+  // 按字母顺序排列
   Alabama: {
     population: 5024279,
-    csvBaseName: "alabama_data", // 统一用小写主体，后续自动生成多种格式
+    csvBaseName: "alabama_data",
     ruralRatio: 0.35
+  },
+  Alaska: {
+    population: 733583,
+    csvBaseName: "alaska_data",
+    ruralRatio: 0.65
+  },
+  Arizona: {
+    population: 7379654,
+    csvBaseName: "arizona_data",
+    ruralRatio: 0.28
+  },
+  Arkansas: {
+    population: 3045637,
+    csvBaseName: "arkansas_data",
+    ruralRatio: 0.48
+  },
+  California: {
+    population: 39538223,
+    csvBaseName: "california_data",
+    ruralRatio: 0.15
+  },
+  Colorado: {
+    population: 5893634,
+    csvBaseName: "colorado_data",
+    ruralRatio: 0.32
+  },
+  Connecticut: {
+    population: 3605944,
+    csvBaseName: "connecticut_data",
+    ruralRatio: 0.18
+  },
+  Delaware: {
+    population: 1003384,
+    csvBaseName: "delaware_data",
+    ruralRatio: 0.22
+  },
+  DistrictOfColumbia: {
+    population: 712816,
+    csvBaseName: "dc_data",
+    ruralRatio: 0.00 // DC为纯城市，无农村人口
+  },
+  Florida: {
+    population: 21538187,
+    csvBaseName: "florida_data",
+    ruralRatio: 0.14
+  },
+  Georgia: {
+    population: 10711908,
+    csvBaseName: "georgia_data",
+    ruralRatio: 0.24
+  },
+  Hawaii: {
+    population: 1455271,
+    csvBaseName: "hawaii_data",
+    ruralRatio: 0.21
+  },
+  Idaho: {
+    population: 1900923,
+    csvBaseName: "idaho_data",
+    ruralRatio: 0.58
+  },
+  Illinois: {
+    population: 12812508,
+    csvBaseName: "illinois_data",
+    ruralRatio: 0.19
+  },
+  Indiana: {
+    population: 6833037,
+    csvBaseName: "indiana_data",
+    ruralRatio: 0.31
+  },
+  Iowa: {
+    population: 3190369,
+    csvBaseName: "iowa_data",
+    ruralRatio: 0.52
+  },
+  Kansas: {
+    population: 2937150,
+    csvBaseName: "kansas_data",
+    ruralRatio: 0.45
+  },
+  Kentucky: {
+    population: 4509342,
+    csvBaseName: "kentucky_data",
+    ruralRatio: 0.41
+  },
+  Louisiana: {
+    population: 4657757,
+    csvBaseName: "louisiana_data",
+    ruralRatio: 0.34
+  },
+  Maine: {
+    population: 1372247,
+    csvBaseName: "maine_data",
+    ruralRatio: 0.61
+  },
+  Maryland: {
+    population: 6177224,
+    csvBaseName: "maryland_data",
+    ruralRatio: 0.17
+  },
+  Massachusetts: {
+    population: 7029917,
+    csvBaseName: "massachusetts_data",
+    ruralRatio: 0.13
+  },
+  Michigan: {
+    population: 10077331,
+    csvBaseName: "michigan_data",
+    ruralRatio: 0.29
+  },
+  Minnesota: {
+    population: 5707390,
+    csvBaseName: "minnesota_data",
+    ruralRatio: 0.40
+  },
+  Mississippi: {
+    population: 2966407,
+    csvBaseName: "mississippi_data",
+    ruralRatio: 0.49
+  },
+  Missouri: {
+    population: 6169270,
+    csvBaseName: "missouri_data",
+    ruralRatio: 0.36
+  },
+  Montana: {
+    population: 1122867,
+    csvBaseName: "montana_data",
+    ruralRatio: 0.69
+  },
+  Nebraska: {
+    population: 1963692,
+    csvBaseName: "nebraska_data",
+    ruralRatio: 0.53
+  },
+  Nevada: {
+    population: 3104614,
+    csvBaseName: "nevada_data",
+    ruralRatio: 0.33
+  },
+  NewHampshire: {
+    population: 1388992,
+    csvBaseName: "newhampshire_data",
+    ruralRatio: 0.42
+  },
+  NewJersey: {
+    population: 9288994,
+    csvBaseName: "newjersey_data",
+    ruralRatio: 0.11
+  },
+  NewMexico: {
+    population: 2117522,
+    csvBaseName: "newmexico_data",
+    ruralRatio: 0.54
+  },
+  NewYork: {
+    population: 20201249,
+    csvBaseName: "newyork_data",
+    ruralRatio: 0.12
+  },
+  NorthCarolina: {
+    population: 10439388,
+    csvBaseName: "northcarolina_data",
+    ruralRatio: 0.26
+  },
+  NorthDakota: {
+    population: 779261,
+    csvBaseName: "northdakota_data",
+    ruralRatio: 0.63
+  },
+  Ohio: {
+    population: 11700000, // 保留你原有的Ohio参数
+    csvBaseName: "ohio_data",
+    ruralRatio: 0.20
+  },
+  Oklahoma: {
+    population: 3959353,
+    csvBaseName: "oklahoma_data",
+    ruralRatio: 0.43
+  },
+  Oregon: {
+    population: 4237256,
+    csvBaseName: "oregon_data",
+    ruralRatio: 0.39
+  },
+  Pennsylvania: {
+    population: 12801989,
+    csvBaseName: "pennsylvania_data",
+    ruralRatio: 0.21
+  },
+  RhodeIsland: {
+    population: 1097379,
+    csvBaseName: "rhodeisland_data",
+    ruralRatio: 0.20
+  },
+  SouthCarolina: {
+    population: 5210095,
+    csvBaseName: "southcarolina_data",
+    ruralRatio: 0.27
+  },
+  SouthDakota: {
+    population: 909824,
+    csvBaseName: "southdakota_data",
+    ruralRatio: 0.62
+  },
+  Tennessee: {
+    population: 6910840,
+    csvBaseName: "tennessee_data",
+    ruralRatio: 0.30
+  },
+  Texas: {
+    population: 29145505,
+    csvBaseName: "texas_data",
+    ruralRatio: 0.18
+  },
+  Utah: {
+    population: 3380800,
+    csvBaseName: "utah_data",
+    ruralRatio: 0.35
+  },
+  Vermont: {
+    population: 643077,
+    csvBaseName: "vermont_data",
+    ruralRatio: 0.56
+  },
+  Virginia: {
+    population: 8631393,
+    csvBaseName: "virginia_data",
+    ruralRatio: 0.23
+  },
+  Washington: {
+    population: 7705281,
+    csvBaseName: "washington_data",
+    ruralRatio: 0.25
+  },
+  WestVirginia: {
+    population: 1782959,
+    csvBaseName: "westvirginia_data",
+    ruralRatio: 0.51
+  },
+  Wisconsin: {
+    population: 5893718,
+    csvBaseName: "wisconsin_data",
+    ruralRatio: 0.37
+  },
+  Wyoming: {
+    population: 578803,
+    csvBaseName: "wyoming_data",
+    ruralRatio: 0.72
   }
 };
 
@@ -108,20 +404,19 @@ function formatDate(dateStr) {
   return `${year}-${month}-${day}`;
 }
 
-// 2. 核心功能：生成3种常见文件名格式（忽略大小写）
+// 2. 生成3种文件名格式（忽略大小写）
 function getPossibleCsvPaths(baseName) {
   return [
-    `${baseName}.csv`,                  // 全小写：alabama_data.csv
-    `${baseName.charAt(0).toUpperCase() + baseName.slice(1)}.csv`, // 首字母大写：Alabama_data.csv
-    `${baseName.toUpperCase()}.csv`     // 全大写：ALABAMA_data.csv
+    `${baseName}.csv`,
+    `${baseName.charAt(0).toUpperCase() + baseName.slice(1)}.csv`,
+    `${baseName.toUpperCase()}.csv`
   ];
 }
 
-// 3. 递归尝试加载文件（直到找到有效文件或遍历完所有格式）
+// 3. 递归尝试加载文件
 function tryLoadCsv(csvPaths, stateCfg, index = 0) {
-  // 所有格式都尝试过仍失败
   if (index >= csvPaths.length) {
-    alert(`${currentState}州文件加载失败（已尝试所有大小写格式），自动切回Ohio`);
+    alert(`${currentState}州文件加载失败，自动切回Ohio州`);
     document.getElementById("stateSel").value = "Ohio";
     loadStateData();
     return;
@@ -132,9 +427,8 @@ function tryLoadCsv(csvPaths, stateCfg, index = 0) {
     download: true,
     header: true,
     skipEmptyLines: true,
-    timeout: 3000, // 3秒超时，避免长时间等待
+    timeout: 3000,
     complete: (results) => {
-      // 过滤有效数据（至少1行才视为成功）
       const validData = results.data
         .filter(row => row.date && row.cases && !isNaN(parseInt(row.cases)))
         .map(row => ({
@@ -152,35 +446,31 @@ function tryLoadCsv(csvPaths, stateCfg, index = 0) {
         document.getElementById("loading").style.display = "none";
         document.getElementById("resultContainer").style.display = "grid";
       } else {
-        // 当前格式无效，尝试下一种
         tryLoadCsv(csvPaths, stateCfg, index + 1);
       }
     },
     error: () => {
-      // 请求失败，尝试下一种格式
       tryLoadCsv(csvPaths, stateCfg, index + 1);
     }
   });
 }
 
-// 4. 加载州数据（触发文件名自动适配）
+// 4. 加载州数据
 function loadStateData() {
   currentState = document.getElementById("stateSel").value;
   const stateCfg = STATE_CONFIG[currentState];
   
-  // 重置界面状态
   document.getElementById("dateSel").value = "";
   document.getElementById("dateSel").disabled = true;
   document.querySelector("button").disabled = true;
   document.getElementById("loading").style.display = "block";
   document.getElementById("resultContainer").style.display = "none";
 
-  // 生成3种可能的文件名，开始尝试加载
   const possibleCsvPaths = getPossibleCsvPaths(stateCfg.csvBaseName);
   tryLoadCsv(possibleCsvPaths, stateCfg);
 }
 
-// 5. 设置日期范围（仅允许CSV内日期）
+// 5. 设置日期范围
 function setDateRange() {
   const dateInput = document.getElementById("dateSel");
   const minDate = calcData[0].date;
@@ -192,13 +482,12 @@ function setDateRange() {
   document.querySelector("button").disabled = false;
 }
 
-// 6. 核心计算（SIR模型+Re指数）
+// 6. 核心计算
 function calculateData(stateCfg) {
   const N = stateCfg.population;
   let S = N;
   let I = 0;
 
-  // 计算每日原始新增
   const dailyRaw = rawData.map((row, index) => {
     const prevTotal = index > 0 ? rawData[index - 1].totalCases : 0;
     return {
@@ -208,7 +497,6 @@ function calculateData(stateCfg) {
     };
   });
 
-  // 7日平滑新增
   const smoothDaily = dailyRaw.map((row, index) => {
     let sum = 0, count = 0;
     const startIdx = Math.max(0, index - COMMON_PARAMS.smoothWindow + 1);
@@ -224,7 +512,6 @@ function calculateData(stateCfg) {
     };
   });
 
-  // 计算S/I/β/Re
   calcData = smoothDaily.map(row => {
     const newIn = row.newSmooth;
     const beta = (I > 0 && S > 0) ? (newIn * N) / (I * S) : 0;
@@ -243,7 +530,6 @@ function calculateData(stateCfg) {
       Re: Re
     };
 
-    // SIR迭代更新
     const newRecover = COMMON_PARAMS.gamma * I;
     S = Math.max(0, S - newIn);
     I = Math.max(0, I + newIn - newRecover);
@@ -252,7 +538,7 @@ function calculateData(stateCfg) {
   });
 }
 
-// 7. 初始化Re趋势图
+// 7. 初始化图表
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
   if (chart) chart.destroy();
@@ -262,7 +548,7 @@ function initChart() {
     data: {
       labels: calcData.map(item => item.date),
       datasets: [{
-        label: `${currentState}州 Re指数`,
+        label: `${currentState}州 Re指数 / ${currentState} State Re Index`,
         data: calcData.map(item => item.Re.toFixed(2)),
         borderColor: "#165DFF",
         backgroundColor: "rgba(22, 93, 255, 0.1)",
@@ -275,8 +561,8 @@ function initChart() {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        y: { min: 0, max: 3 },
-        x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 30 } }
+        y: { min: 0, max: 3, title: { display: true, text: "Re指数 / Re Index" } },
+        x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 30 }, title: { display: true, text: "日期 / Date" } }
       }
     }
   });
@@ -321,11 +607,9 @@ function runQuery() {
   const stateCfg = STATE_CONFIG[currentState];
   const { urbanBeta, ruralBeta, urbanRatio, ruralRatio } = splitUrbanRuralBeta(target.beta);
   
-  // 全州预测
   const statePred = predict72h(target.S, target.I, target.beta, target.newSmooth);
   const stateWarn = statePred.predRe > COMMON_PARAMS.reWarnThreshold && statePred.growth > COMMON_PARAMS.growthWarnThreshold;
 
-  // 城乡预测
   const urbanPop = stateCfg.population * urbanRatio;
   const ruralPop = stateCfg.population * ruralRatio;
   const urbanI = target.I * urbanRatio;
@@ -340,12 +624,11 @@ function runQuery() {
   const urbanWarn = urbanPred.predRe > COMMON_PARAMS.reWarnThreshold && urbanPred.growth > COMMON_PARAMS.growthWarnThreshold;
   const ruralWarn = ruralPred.predRe > COMMON_PARAMS.reWarnThreshold && ruralPred.growth > COMMON_PARAMS.growthWarnThreshold;
 
-  // 调度建议
   const uavTip = ruralWarn 
-    ? "⚠️ 优先农村配送（农村高风险）"
+    ? "⚠️ 优先农村配送（农村高风险）/ Prioritize Rural Delivery (High Risk)"
     : urbanWarn 
-      ? "⚠️ 优先城市配送（城市高风险）"
-      : "✅ 无需紧急配送（风险可控）";
+      ? "⚠️ 优先城市配送（城市高风险）/ Prioritize Urban Delivery (High Risk)"
+      : "✅ 无需紧急配送（风险可控）/ No Urgent Delivery (Controllable Risk)";
 
   renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urbanWarn, ruralWarn, uavTip);
 }
@@ -362,12 +645,12 @@ function renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urban
     <div class="item"><div>72h预测Re / 72h Predicted Re</div><div style="font-weight:bold">${statePred.predRe.toFixed(2)}</div></div>
     <div class="item"><div>72h新增预测 / 72h New Cases Prediction</div><div style="font-weight:bold">${Math.round(statePred.predNew)}</div></div>
     <div class="item"><div>72h增速 / 72h Growth Rate</div><div style="font-weight:bold">${(statePred.growth*100).toFixed(1)}%</div></div>
-    <div class="item"><div>预警状态 / Warning Status</div><div style="font-weight:bold;color:${stateWarn?"#F53F3F":"#00B42A"}">${stateWarn?"⚠️触发预警":"✅正常"}</div></div>
+    <div class="item"><div>预警状态 / Warning Status</div><div style="font-weight:bold;color:${stateWarn?"#F53F3F":"#00B42A"}">${stateWarn?"⚠️触发预警 / Warning Triggered":"✅未触发预警 / No Warning"}</div></div>
   `;
 
   document.getElementById("resUrban").innerHTML = `
-    <div class="item"><div>城市 / Urban</div><div>Re: ${urbanPred.predRe.toFixed(2)} | 增速: ${(urbanPred.growth*100).toFixed(1)}% | ${urbanWarn?"⚠️":"✅"}</div></div>
-    <div class="item"><div>农村 / Rural</div><div>Re: ${ruralPred.predRe.toFixed(2)} | 增速: ${(ruralPred.growth*100).toFixed(1)}% | ${ruralWarn?"⚠️":"✅"}</div></div>
+    <div class="item"><div>城市 / Urban</div><div>Re: ${urbanPred.predRe.toFixed(2)} | 增速 / Growth: ${(urbanPred.growth*100).toFixed(1)}% | ${urbanWarn?"⚠️":"✅"}</div></div>
+    <div class="item"><div>农村 / Rural</div><div>Re: ${ruralPred.predRe.toFixed(2)} | 增速 / Growth: ${(ruralPred.growth*100).toFixed(1)}% | ${ruralWarn?"⚠️":"✅"}</div></div>
   `;
 
   document.getElementById("resUAV").innerHTML = `
