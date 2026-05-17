@@ -29,8 +29,8 @@ h3{margin-bottom:12px;color:#303133}
 <body>
 <div class="container">
   <header>
-    <h1>RM‑SIR 美国Ohio州疫情指数监测与无人机干预调度系统</h1>
-    <p>2020-03-04 ~ 2022-01-25（694天完整数据）| 7日平滑新增，与Excel完全对齐</p>
+    <h1>RM‑SIR 美国Ohio州疫情指数监测系统</h1>
+    <p>严格按论文公式：D=5, γ=0.2；3天平滑；I=累计</p>
   </header>
 
   <div class="card">
@@ -40,317 +40,216 @@ h3{margin-bottom:12px;color:#303133}
         <option value="Ohio" selected>Ohio</option>
       </select>
       <label>选择日期 / Select Date：</label>
-      <input type="date" id="dateSel" disabled>
-      <button onclick="runQuery()" disabled>查询数据 / Query Data</button>
+      <input type="date" id="dateSel">
+      <button onclick="run()">查询数据 / Query Data</button>
     </div>
-    <div class="loading" id="loading">加载数据中...（约2秒）</div>
+    <div class="loading" id="loading">加载数据中...</div>
   </div>
 
   <div class="grid" id="resultContainer" style="display:none">
-    <div class="card">
-      <h3>当日核心指标 / Daily Core Indicators</h3>
-      <div id="resToday"></div>
-    </div>
-    <div class="card">
-      <h3>72小时预警 / 72‑Hour Early Warning</h3>
-      <div id="resForecast"></div>
-    </div>
-    <div class="card">
-      <h3>城乡监测 / Urban‑Rural Monitoring</h3>
-      <div id="resUrban"></div>
-    </div>
-    <div class="card">
-      <h3>无人机调度建议 / UAV Dispatch Suggestion</h3>
-      <div id="resUAV"></div>
-    </div>
+    <div class="card"><div id="resToday"></div></div>
+    <div class="card"><div id="resForecast"></div></div>
+    <div class="card"><div id="resUrban"></div></div>
+    <div class="card"><div id="resUAV"></div></div>
     <div class="card full">
-      <h3>Re指数历史趋势 / Historical Trends of the Re Index</h3>
       <div class="chart-box"><canvas id="chartRe"></canvas></div>
     </div>
   </div>
 </div>
 
 <script>
-// 模型核心参数
-const MODEL_PARAMS = {
-  ruralUrbanRatio: 0.77,    // 农村/城市传播率比
-  noIntervDays: 12,         // 无干预治疗天数
-  intervDays: 7,            // 有干预治疗天数
-  infectPeriodCoeff: 5/7,   // 传染期系数
-  reWarnThreshold: 1.2,     // Re预警阈值
-  growthWarnThreshold: 0.3, // 新增增速预警阈值（30%）
-  ohioPopulation: 11799448,  // Ohio州2020年人口
-  smoothWindow:7             // 7日滑动平均，和Excel平滑完全一致
+// 论文参数：D=5 → γ=0.2；3天平滑；I=累计
+const P = {
+  D: 5,
+  gamma: 1/5,
+  smoothWin: 3,
+  reWarn: 1.2,
+  growthTh: 0.3,
+  ohioPop: 11690000
 };
 
-// 全局变量：存储处理后的数据
-let ohioProcessedData = [];
+let rawData = [];
+let smoothData = [];
 let chart = null;
 
-// 1. 加载CSV数据
+// 1. 加载CSV
 function loadCsvData() {
   Papa.parse("ohio_data.csv", {
     download: true,
     header: true,
-    complete: function(results) {
-      ohioProcessedData = processCsvData(results.data);
+    complete: res => {
+      rawData = res.data
+        .filter(x => x.date && x.cases)
+        .map(x => ({
+          date: x.date.trim(),
+          total: parseInt(x.cases),
+          deaths: parseInt(x.deaths||0)
+        }))
+        .sort((a,b)=>new Date(a.date)-new Date(b.date));
+      processSmooth();
       initPage();
-      document.getElementById("loading").style.display = "none";
-      document.getElementById("resultContainer").style.display = "grid";
-    },
-    error: function(error) {
-      alert("CSV数据加载失败，请检查文件路径：" + error.message);
+      document.getElementById("loading").style.display="none";
+      document.getElementById("resultContainer").style.display="grid";
     }
   });
 }
 
-// 2. 处理CSV数据：累计→当日新增 → 7日滑动平均平滑（关键！对齐Excel）
-function processCsvData(rawCsvData) {
-  const validData = rawCsvData
-    .filter(row => row.date && row.cases)
-    .map(row => ({
-      date: row.date.trim(),
-      cases: parseInt(row.cases),
-      deaths: row.deaths ? parseInt(row.deaths) : 0
-    }))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  // 第一步：计算原始当日新增
-  const rawDaily = [];
-  for (let i = 0; i < validData.length; i++) {
-    const current = validData[i];
-    const prev = i > 0 ? validData[i - 1] : null;
-    const dailyNew = prev ? Math.max(0, current.cases - prev.cases) : current.cases;
-    rawDaily.push({
-      date: current.date,
-      rawDailyCases: dailyNew,
-      totalCases: current.cases,
-      totalDeaths: current.deaths
+// 2. 原始新增 + 3天平滑（论文）
+function processSmooth() {
+  let daily = [];
+  for(let i=0;i<rawData.length;i++){
+    let prev = i>0 ? rawData[i-1].total : 0;
+    daily.push({
+      date: rawData[i].date,
+      total: rawData[i].total,
+      newRaw: Math.max(0, rawData[i].total - prev)
     });
   }
-
-  // 第二步：7日滑动平均平滑（和你Excel E列完全一致）
-  const processed = [];
-  const win = MODEL_PARAMS.smoothWindow;
-  for(let i=0;i<rawDaily.length;i++){
+  // 3天平滑
+  smoothData = daily.map((d,i)=>{
     let sum=0,cnt=0;
-    for(let j=Math.max(0,i-win+1);j<=i;j++){
-      sum+=rawDaily[j].rawDailyCases;
-      cnt++;
+    for(let j=Math.max(0,i-P.smoothWin+1);j<=i;j++){
+      sum += daily[j].newRaw; cnt++;
     }
-    const smoothDaily = sum/cnt;
-    processed.push({
-      date: rawDaily[i].date,
-      dailyCases: smoothDaily, // 用平滑后新增计算Re
-      rawDailyCases: rawDaily[i].rawDailyCases,
-      totalCases: rawDaily[i].totalCases,
-      totalDeaths: rawDaily[i].totalDeaths
-    });
+    return {
+      date: d.date,
+      total: d.total,
+      newRaw: d.newRaw,
+      newSmooth: sum/cnt
+    };
+  });
+}
+
+// 3. 论文公式：Re = (β/γ)*(S/N)
+function calcBeta(newSmooth, I, S, N) {
+  if(I===0||S===0) return 0;
+  return newSmooth / (I * S / N);
+}
+function calcRe(beta, S, N) {
+  return (beta / P.gamma) * (S / N);
+}
+
+// 4. 72h预测（仅用于预警，不改Re）
+function nextDay(S,I,beta,N) {
+  let newInf = beta * I * S / N;
+  let newRem = P.gamma * I;
+  return {S:S-newInf, I:I+newInf-newRem, newInf};
+}
+function predict72(S,I,beta,N,cur) {
+  let s=S,i=I,new3=0;
+  for(let d=0;d<3;d++){
+    let t=nextDay(s,i,beta,N);
+    s=t.S; i=t.I; new3=t.newInf;
   }
-  return processed;
+  let g=cur===0?0:(new3-cur)/cur;
+  return {Re:calcRe(beta,s,N), new3, g};
 }
+function isW(re,g) { return re>P.reWarn && g>P.growthTh; }
 
-// 3. 模型核心计算函数
-function calculateNextDay(S, I, beta, gamma, N) {
-  const newCases = beta * I * S / N;
-  const newRecover = gamma * I;
-  return {
-    S: S - newCases,
-    I: I + newCases - newRecover,
-    newCases: newCases
-  };
-}
-
-function calculateRe(beta, gamma, S, N) {
-  return (beta / gamma) * (S / N);
-}
-
-function splitUrbanRuralBeta(totalBeta) {
-  const urbanBeta = totalBeta / (0.8 + MODEL_PARAMS.ruralUrbanRatio * 0.2);
-  const ruralBeta = MODEL_PARAMS.ruralUrbanRatio * urbanBeta;
-  return { urbanBeta, ruralBeta };
-}
-
-function calculateGamma(interventionLevel = 0) {
-  const treatmentDays = MODEL_PARAMS.noIntervDays - 5 * interventionLevel;
-  return 1 / (MODEL_PARAMS.infectPeriodCoeff * treatmentDays);
-}
-
-function predict72Hours(S, I, beta, gamma, N, currentDaily) {
-  let currentS = S;
-  let currentI = I;
-  let predictedNew = 0;
-
-  for (let d = 0; d < 3; d++) {
-    const result = calculateNextDay(currentS, currentI, beta, gamma, N);
-    currentS = result.S;
-    currentI = result.I;
-    predictedNew = result.newCases;
-  }
-
-  const growthRate = currentDaily === 0 ? 0 : (predictedNew - currentDaily) / currentDaily;
-  return {
-    predictedRe: calculateRe(beta, gamma, currentS, N),
-    predictedNewCases: predictedNew,
-    growthRate: growthRate
-  };
-}
-
-function estimateBeta(dailyCases, infected, susceptible, population) {
-  if (infected === 0 || susceptible === 0) return 0;
-  return (dailyCases * population) / (infected * susceptible);
-}
-
-// 4. 图表初始化：Y轴固定3
+// 5. 图表（Y=0~3，Re在1附近）
 function initChart() {
-  const ctx = document.getElementById("chartRe").getContext("2d");
-  chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: [],
-      datasets: [{
-        label: "Re指数（传播能力）",
-        data: [],
-        borderColor: "#165DFF",
-        backgroundColor: "rgba(22, 93, 255, 0.1)",
-        fill: true,
-        tension: 0.3,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          min: 0,
-          max: 3,
-          title: { display: true, text: "Re指数（>1.2需预警）" }
-        },
-        x: {
-          title: { display: true, text: "日期" },
-          ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 30 }
-        }
-      },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: (context) => `Re指数: ${context.parsed.y.toFixed(2)}`
-          }
-        }
+  let ctx=document.getElementById("chartRe").getContext("2d");
+  chart=new Chart(ctx,{
+    type:"line",
+    data:{labels:[],datasets:[{
+      label:"Re指数（论文公式）",
+      data:[],
+      borderColor:"#165DFF",
+      backgroundColor:"rgba(22,93,255,0.1)",
+      fill:true, tension:0.3, borderWidth:3
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        y:{min:0,max:3,title:{display:true,text:"Re指数"}},
+        x:{ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:30}}
       }
     }
   });
 }
-
 function updateChart() {
-  const labels = ohioProcessedData.map(item => item.date);
-  const reData = ohioProcessedData.map(item => {
-    const N = MODEL_PARAMS.ohioPopulation;
-    const I = item.totalCases;
-    const S = N - I;
-    const gamma = calculateGamma();
-    const beta = estimateBeta(item.dailyCases, I, S, N);
-    return calculateRe(beta, gamma, S, N).toFixed(2);
+  let labs=[], res=[];
+  smoothData.forEach(d=>{
+    let N=P.ohioPop;
+    let I=d.total;          // I=累计（论文）
+    let S=N-I;
+    let beta=calcBeta(d.newS, I, S, N);
+    let re=calcRe(beta, S, N);
+    labs.push(d.date);
+    res.push(re.toFixed(2));
   });
-
-  chart.data.labels = labels;
-  chart.data.datasets[0].data = reData;
+  chart.data.labels=labs;
+  chart.data.datasets[0].data=res;
   chart.update();
 }
 
-// 5. 页面初始化
+// 6. 页面
 function initPage() {
-  const minDate = ohioProcessedData[0].date;
-  const maxDate = ohioProcessedData[ohioProcessedData.length - 1].date;
-  const dateInput = document.getElementById("dateSel");
-  dateInput.min = minDate;
-  dateInput.max = maxDate;
-  dateInput.value = minDate;
-  dateInput.disabled = false;
-
-  document.querySelector("button").disabled = false;
-
+  let d0=smoothData[0].date;
+  let d1=smoothData.at(-1).date;
+  let el=document.getElementById("dateSel");
+  el.min=d0; el.max=d1; el.value=d0; el.disabled=false;
+  document.querySelector("button").disabled=false;
   initChart();
   updateChart();
-  runQuery();
+  run();
 }
 
-// 6. 主查询函数
-function runQuery() {
-  const targetDate = document.getElementById("dateSel").value;
-  const targetData = ohioProcessedData.find(item => item.date === targetDate);
+// 7. 主查询
+function run() {
+  let dt=document.getElementById("dateSel").value;
+  let d=smoothData.find(x=>x.date===dt);
+  if(!d) return;
 
-  if (!targetData) {
-    alert("所选日期无数据，请选择其他日期");
-    return;
-  }
+  let N=P.ohioPop;
+  let I=d.total;
+  let S=N-I;
+  let beta=calcBeta(d.newS, I, S, N);
+  let re=calcRe(beta, S, N);
 
-  const N = MODEL_PARAMS.ohioPopulation;
-  const dailyCases = targetData.dailyCases; // 平滑后新增
-  const totalInfected = targetData.totalCases;
-  const susceptible = N - totalInfected;
-  const gamma = calculateGamma();
-  const beta = estimateBeta(dailyCases, totalInfected, susceptible, N);
-  const currentRe = calculateRe(beta, gamma, susceptible, N);
+  // 全州预警
+  let pred=predict72(S,I,beta,N,d.newS);
+  let warn=isW(pred.Re, pred.g);
 
-  const stateForecast = predict72Hours(susceptible, totalInfected, beta, gamma, N, dailyCases);
-  const isStateWarn = stateForecast.predictedRe > MODEL_PARAMS.reWarnThreshold && stateForecast.growthRate > MODEL_PARAMS.growthWarnThreshold;
+  // 城乡：80%/20%
+  let r=0.77;
+  let bA=beta/(0.8+r*0.2);
+  let bB=r*bA;
+  let popA=N*0.8, popB=N*0.2;
+  let IA=I*0.8, IB=I*0.2;
+  let SA=popA-IA, SB=popB-IB;
+  let newA=d.newS*0.8, newB=d.newS*0.2;
 
-  const { urbanBeta, ruralBeta } = splitUrbanRuralBeta(beta);
-  const urbanPop = N * 0.8;
-  const ruralPop = N * 0.2;
-  const urbanInfected = totalInfected * 0.8;
-  const ruralInfected = totalInfected * 0.2;
-  const urbanSusceptible = urbanPop - urbanInfected;
-  const ruralSusceptible = ruralPop - ruralInfected;
-  const urbanDaily = dailyCases * 0.8;
-  const ruralDaily = dailyCases * 0.2;
+  let reA=calcRe(bA, SA, popA);
+  let reB=calcRe(bB, SB, popB);
+  let predA=predict72(SA,IA,bA,popA,newA);
+  let predB=predict72(SB,IB,bB,popB,newB);
+  let wA=isW(predA.Re, predA.g);
+  let wB=isW(predB.Re, predB.g);
 
-  const urbanForecast = predict72Hours(urbanSusceptible, urbanInfected, urbanBeta, gamma, urbanPop, urbanDaily);
-  const isUrbanWarn = urbanForecast.predictedRe > MODEL_PARAMS.reWarnThreshold && urbanForecast.growthRate > MODEL_PARAMS.growthWarnThreshold;
+  let u=wB?"⚠️优先农村":wA?"⚠️优先城市":"✅无需调度";
 
-  const ruralForecast = predict72Hours(ruralSusceptible, ruralInfected, ruralBeta, gamma, ruralPop, ruralDaily);
-  const isRuralWarn = ruralForecast.predictedRe > MODEL_PARAMS.reWarnThreshold && ruralForecast.growthRate > MODEL_PARAMS.growthWarnThreshold;
+  // 渲染
+  document.getElementById("resToday").innerHTML=`
+  <div class="item">日期:${dt}</div>
+  <div class="item">当日新增(原始):${Math.round(d.newRaw)}</div>
+  <div class="item">平滑新增:${Math.round(d.newS)}</div>
+  <div class="item">Re:${re.toFixed(2)}</div>`;
 
-  let uavSuggestion = "";
-  if (isRuralWarn) {
-    uavSuggestion = "⚠️ 优先农村配送（农村高风险）/ Prioritize Rural Delivery (High Risk)";
-  } else if (isUrbanWarn) {
-    uavSuggestion = "⚠️ 优先城市配送（城市高风险）/ Prioritize Urban Delivery (High Risk)";
-  } else {
-    uavSuggestion = "✅ 无需紧急配送（风险可控）/ No Urgent Delivery (Controllable Risk)";
-  }
+  document.getElementById("resForecast").innerHTML=`
+  <div class="item">72h Re:${pred.Re.toFixed(2)}</div>
+  <div class="item">增速:${(pred.g*100).toFixed(1)}%</div>
+  <div class="item" style="color:${warn?"red":"green"}">${warn?"触发预警":"正常"}</div>`;
 
-  renderResults(targetDate, targetData.rawDailyCases, currentRe, stateForecast, isStateWarn, urbanForecast, ruralForecast, isUrbanWarn, isRuralWarn, uavSuggestion);
+  document.getElementById("resUrban").innerHTML=`
+  <div class="item">城市 Re:${reA.toFixed(2)} | ${wA?"⚠️":"✅"}</div>
+  <div class="item">农村 Re:${reB.toFixed(2)} | ${wB?"⚠️":"✅"}</div>`;
+
+  document.getElementById("resUAV").innerHTML=`<div class="item">${u}</div>`;
 }
 
-// 7. 结果渲染函数
-function renderResults(date, rawDaily, re, stateForecast, isStateWarn, urbanForecast, ruralForecast, isUrbanWarn, isRuralWarn, uav) {
-  document.getElementById("resToday").innerHTML = `
-    <div class="item"><div>日期 / Date</div><div style="font-weight:bold">${date}</div></div>
-    <div class="item"><div>当日新增病例 / Daily New Cases</div><div style="font-weight:bold">${Math.round(rawDaily)}</div></div>
-    <div class="item"><div>当前Re指数 / Current Re Index</div><div style="font-weight:bold;color:${re>1.2?"#F53F3F":"#00B42A"}">${re.toFixed(2)}</div></div>
-  `;
-
-  document.getElementById("resForecast").innerHTML = `
-    <div class="item"><div>72h Re预测 / 72h Re Prediction</div><div style="font-weight:bold">${stateForecast.predictedRe.toFixed(2)}</div></div>
-    <div class="item"><div>72h新增预测 / 72h New Cases Prediction</div><div style="font-weight:bold">${Math.round(stateForecast.predictedNewCases)}</div></div>
-    <div class="item"><div>72h增速 / 72h Growth Rate</div><div style="font-weight:bold">${(stateForecast.growthRate*100).toFixed(1)}%</div></div>
-    <div class="item"><div>预警状态 / Warning Status</div><div style="font-weight:bold;color:${isStateWarn?"#F53F3F":"#00B42A"}">${isStateWarn?"⚠️ 触发预警":"✅ 未触发预警"}</div></div>
-  `;
-
-  document.getElementById("resUrban").innerHTML = `
-    <div class="item"><div>城市 / Urban</div><div>Re: ${urbanForecast.predictedRe.toFixed(2)} | 增速: ${(urbanForecast.growthRate*100).toFixed(1)}% | ${isUrbanWarn?"⚠️":"✅"}</div></div>
-    <div class="item"><div>农村 / Rural</div><div>Re: ${ruralForecast.predictedRe.toFixed(2)} | 增速: ${(ruralForecast.growthRate*100).toFixed(1)}% | ${isRuralWarn?"⚠️":"✅"}</div></div>
-  `;
-
-  document.getElementById("resUAV").innerHTML = `
-    <div class="item"><div>调度建议 / Dispatch Suggestion</div><div style="font-weight:bold;color:${uav.includes("⚠️")?"#F53F3F":"#00B42A"}">${uav}</div></div>
-  `;
-}
-
-window.onload = loadCsvData;
+window.onload=loadCsvData;
 </script>
+
 </body>
 </html>
