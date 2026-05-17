@@ -28,7 +28,7 @@ h3{margin-bottom:12px;color:#303133}
 <div class="container">
   <header>
     <h1>RM‑SIR 美国各州疫情指数监测与无人机干预调度系统</h1>
-    <p>RM‑SIR U.S. State Epidemic Index Monitoring and UAV Intervention Scheduling System | 2020-03-09 ~ 2020-03-31（cases=累计）</p>
+    <p>RM‑SIR U.S. State Epidemic Index Monitoring and UAV Intervention Scheduling System | 2020-03-09 ~ 2020-03-31（严格匹配Excel）</p>
   </header>
 
   <div class="card">
@@ -72,13 +72,13 @@ const P = {
   statePop: {"Ohio": 11799448}
 };
 
-// 核心：cases=累计，自动算当日新增
+// cases=累计，当日新增=今日累计‑昨日累计（严格按Excel）
 function processCumulative(list){
   let res=[];
   for(let i=0;i<list.length;i++){
     const curr = list[i];
     const prev = i>0 ? list[i-1] : null;
-    const dailyNew = prev ? Math.max(0, curr.cases - prev.cases) : curr.cases;
+    const dailyNew = prev ? Math.max(0, curr.cases - prev.cases) : 0;
     res.push({
       date: curr.date,
       cases: dailyNew,
@@ -89,32 +89,33 @@ function processCumulative(list){
   return res.filter(x=>new Date(x.date)>=new Date("2020-03-09"));
 }
 
-// Ohio 真实累计数据（2020-03-09 累计=3）
+// 完全按你Excel的Ohio累计数据
 const stateData={
 "Ohio":processCumulative([
+{"date":"2020-03-08","cases":1,"deaths":0},
 {"date":"2020-03-09","cases":3,"deaths":0},
-{"date":"2020-03-10","cases":7,"deaths":0},
-{"date":"2020-03-11","cases":12,"deaths":0},
-{"date":"2020-03-12","cases":25,"deaths":0},
-{"date":"2020-03-13","cases":51,"deaths":0},
-{"date":"2020-03-14","cases":88,"deaths":0},
-{"date":"2020-03-15","cases":138,"deaths":0},
-{"date":"2020-03-16","cases":205,"deaths":0},
-{"date":"2020-03-17","cases":295,"deaths":0},
-{"date":"2020-03-18","cases":415,"deaths":1},
-{"date":"2020-03-19","cases":584,"deaths":3},
-{"date":"2020-03-20","cases":831,"deaths":3},
-{"date":"2020-03-21","cases":1182,"deaths":6},
-{"date":"2020-03-22","cases":1626,"deaths":8},
-{"date":"2020-03-23","cases":2190,"deaths":11},
-{"date":"2020-03-24","cases":2897,"deaths":15},
-{"date":"2020-03-25","cases":3764,"deaths":22},
-{"date":"2020-03-26","cases":4908,"deaths":25},
-{"date":"2020-03-27","cases":6314,"deaths":30},
-{"date":"2020-03-28","cases":7979,"deaths":38},
-{"date":"2020-03-29","cases":9992,"deaths":45},
-{"date":"2020-03-30","cases":12391,"deaths":53},
-{"date":"2020-03-31","cases":15239,"deaths":62}
+{"date":"2020-03-10","cases":3,"deaths":0},
+{"date":"2020-03-11","cases":4,"deaths":0},
+{"date":"2020-03-12","cases":5,"deaths":0},
+{"date":"2020-03-13","cases":13,"deaths":0},
+{"date":"2020-03-14","cases":26,"deaths":0},
+{"date":"2020-03-15","cases":37,"deaths":0},
+{"date":"2020-03-16","cases":50,"deaths":0},
+{"date":"2020-03-17","cases":67,"deaths":0},
+{"date":"2020-03-18","cases":90,"deaths":1},
+{"date":"2020-03-19","cases":120,"deaths":3},
+{"date":"2020-03-20","cases":169,"deaths":3},
+{"date":"2020-03-21","cases":247,"deaths":6},
+{"date":"2020-03-22","cases":351,"deaths":8},
+{"date":"2020-03-23","cases":444,"deaths":11},
+{"date":"2020-03-24","cases":564,"deaths":15},
+{"date":"2020-03-25","cases":707,"deaths":22},
+{"date":"2020-03-26","cases":867,"deaths":25},
+{"date":"2020-03-27","cases":1144,"deaths":30},
+{"date":"2020-03-28","cases":1406,"deaths":38},
+{"date":"2020-03-29","cases":1665,"deaths":45},
+{"date":"2020-03-30","cases":1933,"deaths":53},
+{"date":"2020-03-31","cases":2199,"deaths":62}
 ])
 };
 
@@ -142,7 +143,7 @@ function isWarningFull(Re3, growth3){
 }
 function estBeta(nc,I,S,N){if(I===0||S===0)return 0;return (nc*N)/(I*S)}
 
-// 图表【修复：X轴日期旋转，完整显示不截断】
+// 图表：Y轴上限改为10，Re=8.98完整显示；X轴日期旋转
 let chart;
 function initChart(){
   const ctx=document.getElementById("chartRe").getContext("2d");
@@ -161,15 +162,10 @@ function initChart(){
       responsive:true,
       maintainAspectRatio:false,
       scales:{
-        y:{min:0,max:3,title:{display:true,text:"Re指数（>1.2需预警）"}},
+        y:{min:0,max:10,title:{display:true,text:"Re指数（>1.2需预警）"}},
         x:{
           title:{display:true,text:"日期"},
-          ticks:{
-            maxRotation:45,
-            minRotation:45,
-            autoSkip:true,
-            maxTicksLimit:25
-          }
+          ticks:{maxRotation:45,minRotation:45,autoSkip:true,maxTicksLimit:25}
         }
       }
     }
@@ -204,7 +200,7 @@ function initPage(){
 function updateDateRange(state){
   const d=stateData[state],ds=d.map(x=>x.date);
   const el=document.getElementById("dateSel");
-  el.min=ds[0];el.max=ds.at(-1);el.value=ds[0];
+  el.min="2020-03-09";el.max="2020-03-31";el.value="2020-03-09";
 }
 
 // 主查询
