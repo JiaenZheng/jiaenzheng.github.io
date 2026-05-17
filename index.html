@@ -30,7 +30,7 @@ h3{margin-bottom:12px;color:#303133}
 <div class="container">
   <header>
     <h1>RM‑SIR 美国Ohio州疫情指数监测与无人机干预调度系统</h1>
-    <p>2020-03-04 ~ 2022-01-25（694天完整数据）| 数据来源：ohio_data.csv</p>
+    <p>2020-03-04 ~ 2022-01-25（694天完整数据）| 7日平滑新增，与Excel完全对齐</p>
   </header>
 
   <div class="card">
@@ -79,7 +79,8 @@ const MODEL_PARAMS = {
   infectPeriodCoeff: 5/7,   // 传染期系数
   reWarnThreshold: 1.2,     // Re预警阈值
   growthWarnThreshold: 0.3, // 新增增速预警阈值（30%）
-  ohioPopulation: 11799448  // Ohio州2020年人口
+  ohioPopulation: 11799448,  // Ohio州2020年人口
+  smoothWindow:7             // 7日滑动平均，和Excel平滑完全一致
 };
 
 // 全局变量：存储处理后的数据
@@ -103,7 +104,7 @@ function loadCsvData() {
   });
 }
 
-// 2. 处理CSV数据：累计转当日新增 + 格式统一
+// 2. 处理CSV数据：累计→当日新增 → 7日滑动平均平滑（关键！对齐Excel）
 function processCsvData(rawCsvData) {
   const validData = rawCsvData
     .filter(row => row.date && row.cases)
@@ -114,17 +115,36 @@ function processCsvData(rawCsvData) {
     }))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  const processed = [];
+  // 第一步：计算原始当日新增
+  const rawDaily = [];
   for (let i = 0; i < validData.length; i++) {
     const current = validData[i];
     const prev = i > 0 ? validData[i - 1] : null;
     const dailyNew = prev ? Math.max(0, current.cases - prev.cases) : current.cases;
-    
-    processed.push({
+    rawDaily.push({
       date: current.date,
-      dailyCases: dailyNew,
+      rawDailyCases: dailyNew,
       totalCases: current.cases,
       totalDeaths: current.deaths
+    });
+  }
+
+  // 第二步：7日滑动平均平滑（和你Excel E列完全一致）
+  const processed = [];
+  const win = MODEL_PARAMS.smoothWindow;
+  for(let i=0;i<rawDaily.length;i++){
+    let sum=0,cnt=0;
+    for(let j=Math.max(0,i-win+1);j<=i;j++){
+      sum+=rawDaily[j].rawDailyCases;
+      cnt++;
+    }
+    const smoothDaily = sum/cnt;
+    processed.push({
+      date: rawDaily[i].date,
+      dailyCases: smoothDaily, // 用平滑后新增计算Re
+      rawDailyCases: rawDaily[i].rawDailyCases,
+      totalCases: rawDaily[i].totalCases,
+      totalDeaths: rawDaily[i].totalDeaths
     });
   }
   return processed;
@@ -181,7 +201,7 @@ function estimateBeta(dailyCases, infected, susceptible, population) {
   return (dailyCases * population) / (infected * susceptible);
 }
 
-// 4. 图表初始化【重点：Y轴上限固定为3】
+// 4. 图表初始化：Y轴固定3
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
   chart = new Chart(ctx, {
@@ -204,7 +224,7 @@ function initChart() {
       scales: {
         y: {
           min: 0,
-          max: 3,  // ✅ 固定上限3，解决后期直线问题
+          max: 3,
           title: { display: true, text: "Re指数（>1.2需预警）" }
         },
         x: {
@@ -267,7 +287,7 @@ function runQuery() {
   }
 
   const N = MODEL_PARAMS.ohioPopulation;
-  const dailyCases = targetData.dailyCases;
+  const dailyCases = targetData.dailyCases; // 平滑后新增
   const totalInfected = targetData.totalCases;
   const susceptible = N - totalInfected;
   const gamma = calculateGamma();
@@ -302,14 +322,14 @@ function runQuery() {
     uavSuggestion = "✅ 无需紧急配送（风险可控）/ No Urgent Delivery (Controllable Risk)";
   }
 
-  renderResults(targetDate, dailyCases, currentRe, stateForecast, isStateWarn, urbanForecast, ruralForecast, isUrbanWarn, isRuralWarn, uavSuggestion);
+  renderResults(targetDate, targetData.rawDailyCases, currentRe, stateForecast, isStateWarn, urbanForecast, ruralForecast, isUrbanWarn, isRuralWarn, uavSuggestion);
 }
 
 // 7. 结果渲染函数
-function renderResults(date, daily, re, stateForecast, isStateWarn, urbanForecast, ruralForecast, isUrbanWarn, isRuralWarn, uav) {
+function renderResults(date, rawDaily, re, stateForecast, isStateWarn, urbanForecast, ruralForecast, isUrbanWarn, isRuralWarn, uav) {
   document.getElementById("resToday").innerHTML = `
     <div class="item"><div>日期 / Date</div><div style="font-weight:bold">${date}</div></div>
-    <div class="item"><div>当日新增病例 / Daily New Cases</div><div style="font-weight:bold">${Math.round(daily)}</div></div>
+    <div class="item"><div>当日新增病例 / Daily New Cases</div><div style="font-weight:bold">${Math.round(rawDaily)}</div></div>
     <div class="item"><div>当前Re指数 / Current Re Index</div><div style="font-weight:bold;color:${re>1.2?"#F53F3F":"#00B42A"}">${re.toFixed(2)}</div></div>
   `;
 
