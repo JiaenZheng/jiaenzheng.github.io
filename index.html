@@ -161,19 +161,18 @@ function loadStateData() {
   currentState = document.getElementById("stateSel").value;
   const stateCfg = STATE_CONFIG[currentState];
   
-  // 显示加载状态
-  document.getElementById("loading").style.display = "block";
-  document.getElementById("resultContainer").style.display = "none";
+  // 【修复】切换州立刻清空日期、禁用查询，防止旧日期干扰
+  document.getElementById("dateSel").value = "";
   document.getElementById("dateSel").disabled = true;
   document.querySelector("button").disabled = true;
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("resultContainer").style.display = "none";
 
-  // 加载CSV（适配你的数据格式）
   Papa.parse(stateCfg.csvPath, {
     download: true,
     header: true,
     skipEmptyLines: true,
     complete: (results) => {
-      // 仅读取date和cases列，过滤无效数据
       rawData = results.data
         .filter(row => row.date && row.cases && !isNaN(parseInt(row.cases)))
         .map(row => ({
@@ -187,8 +186,8 @@ function loadStateData() {
         return;
       }
 
-      calculateData(); // 计算S/I/β/Re
-      initPage();      // 初始化页面
+      calculateData();
+      initPage();
       document.getElementById("loading").style.display = "none";
       document.getElementById("resultContainer").style.display = "grid";
     },
@@ -201,21 +200,19 @@ function loadStateData() {
 // 核心计算（SIR模型+Re指数）
 function calculateData() {
   const stateCfg = STATE_CONFIG[currentState];
-  const N = stateCfg.population; // 使用当前州的人口数
-  let S = N;  // 初始易感人群=总人口
-  let I = 0;  // 初始感染人群=0
+  const N = stateCfg.population;
+  let S = N;
+  let I = 0;
 
-  // 步骤1：计算每日原始新增
   const dailyRaw = rawData.map((row, index) => {
     const prevTotal = index > 0 ? rawData[index - 1].totalCases : 0;
     return {
       date: row.date,
       totalCases: row.totalCases,
-      newRaw: Math.max(0, row.totalCases - prevTotal) // 避免负新增
+      newRaw: Math.max(0, row.totalCases - prevTotal)
     };
   });
 
-  // 步骤2：7日滑动平均平滑新增（降低波动）
   const smoothDaily = dailyRaw.map((row, index) => {
     let sum = 0, count = 0;
     const startIdx = Math.max(0, index - COMMON_PARAMS.smoothWindow + 1);
@@ -227,22 +224,16 @@ function calculateData() {
       date: row.date,
       totalCases: row.totalCases,
       newRaw: row.newRaw,
-      newSmooth: sum / count // 平滑后新增
+      newSmooth: sum / count
     };
   });
 
-  // 步骤3：计算S/I/β/Re（按论文公式）
   calcData = smoothDaily.map(row => {
     const newIn = row.newSmooth;
-
-    // 传播系数β：β = (平滑新增 × 总人口) / (感染人数 × 易感人数)
     const beta = (I > 0 && S > 0) ? (newIn * N) / (I * S) : 0;
-    // 基本再生数Rt：Rt = β / γ
     const Rt = beta / COMMON_PARAMS.gamma;
-    // 有效再生数Re：Re = Rt × (易感人数/总人口)
     const Re = Rt * (S / N);
 
-    // 存储当前计算结果
     const result = {
       date: row.date,
       totalCases: row.totalCases,
@@ -255,10 +246,9 @@ function calculateData() {
       Re: Re
     };
 
-    // SIR模型迭代更新（每日更新易感/感染人群）
-    const newRecover = COMMON_PARAMS.gamma * I; // 当日恢复人数
-    S = Math.max(0, S - newIn);  // 易感人群减少（转为感染）
-    I = Math.max(0, I + newIn - newRecover);  // 感染人群更新（新增-恢复）
+    const newRecover = COMMON_PARAMS.gamma * I;
+    S = Math.max(0, S - newIn);
+    I = Math.max(0, I + newIn - newRecover);
 
     return result;
   });
@@ -267,20 +257,19 @@ function calculateData() {
 // 初始化Re趋势图
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
-  // 销毁旧图表（避免切换州时重叠）
   if (chart) chart.destroy();
   
   chart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: calcData.map(item => item.date), // X轴：日期
+      labels: calcData.map(item => item.date),
       datasets: [{
         label: `${currentState}州 Re指数 / ${currentState} State Re Index`,
-        data: calcData.map(item => item.Re.toFixed(2)), // Y轴：Re值
+        data: calcData.map(item => item.Re.toFixed(2)),
         borderColor: "#165DFF",
         backgroundColor: "rgba(22, 93, 255, 0.1)",
         fill: true,
-        tension: 0.3, // 曲线平滑度
+        tension: 0.3,
         borderWidth: 2
       }]
     },
@@ -288,15 +277,8 @@ function initChart() {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        y: {
-          min: 0,
-          max: 3,
-          title: { display: true, text: "Re指数 / Re Index" }
-        },
-        x: {
-          ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 30 }, // 日期标签优化
-          title: { display: true, text: "日期 / Date" }
-        }
+        y: { min: 0, max: 3, title: { display: true, text: "Re指数 / Re Index" } },
+        x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 30 }, title: { display: true, text: "日期 / Date" } }
       }
     }
   });
@@ -308,38 +290,34 @@ function predict72h(S0, I0, beta0, newIn0) {
   const N = stateCfg.population;
   let S = S0, I = I0, predNew = 0;
 
-  // 迭代3天预测
   for (let d = 0; d < 3; d++) {
-    predNew = beta0 * I * S / N; // 预测当日新增
-    const newRecover = COMMON_PARAMS.gamma * I; // 预测当日恢复
-    S = Math.max(0, S - predNew); // 更新易感人群
-    I = Math.max(0, I + predNew - newRecover); // 更新感染人群
+    predNew = beta0 * I * S / N;
+    const newRecover = COMMON_PARAMS.gamma * I;
+    S = Math.max(0, S - predNew);
+    I = Math.max(0, I + predNew - newRecover);
   }
 
-  // 计算预测Re和增速
   const predBeta = (I > 0 && S > 0) ? (predNew * N) / (I * S) : 0;
-  const predRe = (predBeta / COMMON_PARAMS.gamma) * (S / N); // 预测Re
-  const growth = newIn0 === 0 ? 0 : (predNew - newIn0) / newIn0; // 增速
+  const predRe = (predBeta / COMMON_PARAMS.gamma) * (S / N);
+  const growth = newIn0 === 0 ? 0 : (predNew - newIn0) / newIn0;
 
   return { predRe, predNew, growth };
 }
 
-// 城乡传播系数拆分（按当前州农村比例）
+// 城乡传播系数拆分
 function splitUrbanRuralBeta(totalBeta) {
   const stateCfg = STATE_CONFIG[currentState];
-  const ruralRatio = stateCfg.ruralRatio; // 当前州农村人口占比
-  const urbanRatio = 1 - ruralRatio;      // 当前州城市人口占比
+  const ruralRatio = stateCfg.ruralRatio;
+  const urbanRatio = 1 - ruralRatio;
   
-  // 按城乡人口比例拆分β
   const urbanBeta = totalBeta / (urbanRatio + COMMON_PARAMS.ruralUrbanRatio * ruralRatio);
   const ruralBeta = COMMON_PARAMS.ruralUrbanRatio * urbanBeta;
   return { urbanBeta, ruralBeta, urbanRatio, ruralRatio };
 }
 
-// 主查询函数（点击"查询数据"触发）
+// 主查询函数
 function runQuery() {
   const targetDate = document.getElementById("dateSel").value;
-  // 匹配选中日期的数据
   const target = calcData.find(item => item.date === targetDate);
 
   if (!target) {
@@ -350,47 +328,40 @@ function runQuery() {
   const stateCfg = STATE_CONFIG[currentState];
   const { urbanBeta, ruralBeta, urbanRatio, ruralRatio } = splitUrbanRuralBeta(target.beta);
   
-  // 1. 全州72小时预测
   const statePred = predict72h(target.S, target.I, target.beta, target.newSmooth);
-  // 预警判断（Re>1.2且增速>30%触发预警）
   const stateWarn = statePred.predRe > COMMON_PARAMS.reWarnThreshold && statePred.growth > COMMON_PARAMS.growthWarnThreshold;
 
-  // 2. 城乡拆分预测（按当前州城乡比例）
-  const urbanPop = stateCfg.population * urbanRatio; // 城市总人口
-  const ruralPop = stateCfg.population * ruralRatio; // 农村总人口
-  const urbanI = target.I * urbanRatio;             // 城市感染人数
-  const ruralI = target.I * ruralRatio;             // 农村感染人数
-  const urbanS = urbanPop - urbanI;                 // 城市易感人数
-  const ruralS = ruralPop - ruralI;                 // 农村易感人数
-  const urbanNew = target.newSmooth * urbanRatio;   // 城市新增
-  const ruralNew = target.newSmooth * ruralRatio;   // 农村新增
+  const urbanPop = stateCfg.population * urbanRatio;
+  const ruralPop = stateCfg.population * ruralRatio;
+  const urbanI = target.I * urbanRatio;
+  const ruralI = target.I * ruralRatio;
+  const urbanS = urbanPop - urbanI;
+  const ruralS = ruralPop - ruralI;
+  const urbanNew = target.newSmooth * urbanRatio;
+  const ruralNew = target.newSmooth * ruralRatio;
 
-  const urbanPred = predict72h(urbanS, urbanI, urbanBeta, urbanNew); // 城市预测
-  const ruralPred = predict72h(ruralS, ruralI, ruralBeta, ruralNew); // 农村预测
+  const urbanPred = predict72h(urbanS, urbanI, urbanBeta, urbanNew);
+  const ruralPred = predict72h(ruralS, ruralI, ruralBeta, ruralNew);
   const urbanWarn = urbanPred.predRe > COMMON_PARAMS.reWarnThreshold && urbanPred.growth > COMMON_PARAMS.growthWarnThreshold;
   const ruralWarn = ruralPred.predRe > COMMON_PARAMS.reWarnThreshold && ruralPred.growth > COMMON_PARAMS.growthWarnThreshold;
 
-  // 3. 无人机调度建议
   const uavTip = ruralWarn 
     ? "⚠️ 优先农村配送（农村高风险）/ Prioritize Rural Delivery (High Risk)"
     : urbanWarn 
       ? "⚠️ 优先城市配送（城市高风险）/ Prioritize Urban Delivery (High Risk)"
       : "✅ 无需紧急配送（风险可控）/ No Urgent Delivery (Controllable Risk)";
 
-  // 渲染结果到界面
   renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urbanWarn, ruralWarn, uavTip);
 }
 
-// 渲染中英双语结果到界面
+// 渲染界面
 function renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urbanWarn, ruralWarn, uavTip) {
-  // 当日核心指标
   document.getElementById("resToday").innerHTML = `
     <div class="item"><div>日期 / Date</div><div style="font-weight:bold">${target.date}</div></div>
     <div class="item"><div>当日新增(原始) / Raw Daily New</div><div style="font-weight:bold">${Math.round(target.newRaw)}</div></div>
     <div class="item"><div>当前Re指数 / Current Re Index</div><div style="font-weight:bold;color:${target.Re>1.2?"#F53F3F":"#00B42A"}">${target.Re.toFixed(2)}</div></div>
   `;
 
-  // 72小时预警
   document.getElementById("resForecast").innerHTML = `
     <div class="item"><div>72h预测Re / 72h Predicted Re</div><div style="font-weight:bold">${statePred.predRe.toFixed(2)}</div></div>
     <div class="item"><div>72h新增预测 / 72h New Cases Prediction</div><div style="font-weight:bold">${Math.round(statePred.predNew)}</div></div>
@@ -398,37 +369,32 @@ function renderResults(target, statePred, stateWarn, urbanPred, ruralPred, urban
     <div class="item"><div>预警状态 / Warning Status</div><div style="font-weight:bold;color:${stateWarn?"#F53F3F":"#00B42A"}">${stateWarn?"⚠️触发预警 / Warning Triggered":"✅未触发预警 / No Warning"}</div></div>
   `;
 
-  // 城乡监测
   document.getElementById("resUrban").innerHTML = `
     <div class="item"><div>城市 / Urban</div><div>Re: ${urbanPred.predRe.toFixed(2)} | 增速 / Growth: ${(urbanPred.growth*100).toFixed(1)}% | ${urbanWarn?"⚠️":"✅"}</div></div>
     <div class="item"><div>农村 / Rural</div><div>Re: ${ruralPred.predRe.toFixed(2)} | 增速 / Growth: ${(ruralPred.growth*100).toFixed(1)}% | ${ruralWarn?"⚠️":"✅"}</div></div>
   `;
 
-  // 无人机调度建议
   document.getElementById("resUAV").innerHTML = `
     <div class="item"><div>调度建议 / Dispatch Suggestion</div><div style="font-weight:bold;color:${uavTip.includes("⚠️")?"#F53F3F":"#00B42A"}">${uavTip}</div></div>
   `;
 }
 
-// 页面初始化（加载完成后触发）
+// 初始化页面（加载完数据后，强制设置正确日期）
 function initPage() {
-  const minDate = calcData[0].date; // 数据起始日期
-  const maxDate = calcData[calcData.length - 1].date; // 数据结束日期
+  const minDate = calcData[0].date;
+  const maxDate = calcData[calcData.length - 1].date;
   const dateInput = document.getElementById("dateSel");
   
-  // 绑定日期选择器范围
   dateInput.min = minDate;
   dateInput.max = maxDate;
-  dateInput.value = minDate; // 默认选中起始日期
+  dateInput.value = minDate; // 自动选当前州**最早的一天**
   dateInput.disabled = false;
   document.querySelector("button").disabled = false;
 
-  // 初始化图表并查询第一条数据
   initChart();
   runQuery();
 }
 
-// 页面加载完成后，默认加载Ohio州数据
 window.onload = () => loadStateData();
 </script>
 </body>
