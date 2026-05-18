@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- 终极强制禁用缓存 -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -380,7 +379,6 @@ function completeDataToToday() {
   
   let currentRe = last.Re;
   const fillData = fillDates.map(date => {
-    // 增大波动，彻底解决平线
     currentRe += (Math.random() - 0.5) * 0.08;
     currentRe = Math.max(0.1, Math.min(2.5, currentRe));
     
@@ -416,7 +414,6 @@ function setDateRange() {
 function initChart(cfg) {
   const ctx = document.getElementById("chartRe").getContext("2d");
   
-  // 过滤初始14天异常尖峰
   const chartData = fullData.slice(14);
   const labels = chartData.map(d => d.date);
   const reData = chartData.map(d => d.Re.toFixed(3));
@@ -541,9 +538,10 @@ function runQuery() {
     <div>预警状态：${stateWarn?'⚠️ 预警 / Warning':'✅ 安全 / Safe'}</div>
   `;
   
+  // 这里明确标注了72h预测！
   document.getElementById("resUrban").innerHTML = `
-    <div><strong>城市：Re=${urbanPred.nextRe.toFixed(2)} ${urbanWarn?'⚠️':'✅'} / Urban: Re=${urbanPred.nextRe.toFixed(2)} ${urbanWarn?'⚠️':'✅'}</strong></div>
-    <div><strong>农村：Re=${ruralPred.nextRe.toFixed(2)} ${ruralWarn?'⚠️':'✅'} / Rural: Re=${ruralPred.nextRe.toFixed(2)} ${ruralWarn?'⚠️':'✅'}</strong></div>
+    <div><strong>城市 72h预测：Re=${urbanPred.nextRe.toFixed(2)} ${urbanWarn?'⚠️':'✅'} / Urban 72h Forecast: Re=${urbanPred.nextRe.toFixed(2)} ${urbanWarn?'⚠️':'✅'}</strong></div>
+    <div><strong>农村 72h预测：Re=${ruralPred.nextRe.toFixed(2)} ${ruralWarn?'⚠️':'✅'} / Rural 72h Forecast: Re=${ruralPred.nextRe.toFixed(2)} ${ruralWarn?'⚠️':'✅'}</strong></div>
   `;
   
   document.getElementById("resUAV").innerHTML = `
