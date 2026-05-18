@@ -114,7 +114,7 @@ const STATE_CONFIG = {
   Colorado: { population:5893634, csvBaseName:"colorado_data", ruralRatio:0.32 },
   Connecticut: { population:3605944, csvBaseName:"connecticut_data", ruralRatio:0.18 },
   Delaware: { population:1003384, csvBaseName:"delaware_data", ruralRatio:0.22 },
-  // 修正：哥伦比亚特区匹配全小写的districtofcolumbia_data.csv
+  // 严格匹配你仓库里的：districtofcolumbia_data.csv
   DistrictOfColumbia: { population:712816, csvBaseName:"districtofcolumbia_data", ruralRatio:0 },
   Florida: { population:21538187, csvBaseName:"florida_data", ruralRatio:0.14 },
   Georgia: { population:10711908, csvBaseName:"georgia_data", ruralRatio:0.24 },
@@ -171,9 +171,12 @@ function formatDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-// 严格使用配置里的文件名，不再自动转换大小写
+// 【关键修复】同时尝试：驼峰原名 + 全小写文件名
 function getPaths(bn) {
-  return [`${bn}.csv`];
+  return [
+    `${bn}.csv`,
+    `${bn.toLowerCase()}.csv`
+  ];
 }
 
 function tryLoad(paths, idx=0) {
