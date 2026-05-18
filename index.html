@@ -7,7 +7,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
-/* 全局样式重置+基础布局 */
 * {
   margin: 0;
   padding: 0;
@@ -61,6 +60,9 @@ select, input[type="date"] {
   border-radius: 8px;
   font-size: 14px;
   min-width: 200px;
+  /* 修复下拉框错乱 */
+  max-height: 42px;
+  appearance: auto;
 }
 button {
   background: #165DFF;
@@ -104,7 +106,7 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
   padding: 20px;
   color: #666;
   font-size: 16px;
-  display: none;
+  display: none !important;
 }
 .chart-container {
   position: relative;
@@ -287,12 +289,16 @@ function onCountryChange() {
   const sel = document.getElementById("stateSel");
   sel.innerHTML = "";
   const regions = COUNTRY_CONFIG[currentCountry].regions;
+  // 修复：默认选中第一个地区
+  let firstKey = Object.keys(regions)[0];
   for(let k in regions){
     const opt = document.createElement("option");
     opt.value = k; opt.textContent = regions[k].name;
     sel.appendChild(opt);
   }
   document.getElementById("regionLabel").textContent = currentCountry==="CN" ? "选择省 / Select Province：" : "选择州 / Select State：";
+  // 强制清除残留加载状态
+  document.getElementById("loading").style.display = "none";
   loadStateData();
 }
 
@@ -441,7 +447,11 @@ function runQuery() {
   document.getElementById("resUAV").innerHTML = `<div><strong>无人机建议：${uavTip}</strong></div>`;
 }
 
+// 修复：页面加载强制初始化美国Ohio州
 window.onload = function(){
+  // 先清空加载状态
+  document.getElementById("loading").style.display = "none";
+  // 初始化国家下拉
   onCountryChange();
 };
 </script>
