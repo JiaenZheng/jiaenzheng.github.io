@@ -193,7 +193,7 @@ function generateDateRange(startDate, endDate) {
   return dates;
 }
 
-// 新增：补全CSV后至今日的Re数据（基于最后一个有效数据的趋势预测）
+// 核心优化：补全CSV后至今日的Re数据（模拟真实疫情波动趋势）
 function completeDataToToday() {
   const todayStr = getTodayDate();
   const csvLastDate = new Date(csvMaxDate);
@@ -209,21 +209,40 @@ function completeDataToToday() {
   const fillDates = generateDateRange(new Date(csvLastDate).setDate(csvLastDate.getDate() + 1), today);
   const lastValidData = calcData[calcData.length - 1];
   
-  // 补全数据（基于最后一个有效数据的Re值做趋势平滑预测）
-  const fillData = fillDates.map(date => {
-    // 模拟趋势：轻微波动（±0.05），保持最后一个Re的整体趋势
-    const randomFluc = (Math.random() - 0.5) * 0.1; 
-    const newRe = Math.max(0, lastValidData.Re + randomFluc);
+  // 优化：模拟真实疫情的趋势波动
+  let currentRe = lastValidData.Re;
+  // 随机生成一个基础趋势（小幅上升/下降/平稳）
+  const trendDirection = Math.random() > 0.5 ? 1 : -1; // 1=上升，-1=下降
+  const trendStrength = Math.random() * 0.0015; // 趋势强度（每日变化幅度）
+  // 分段调整：每30天调整一次趋势方向，更贴近真实疫情
+  let segmentDay = 0;
+  let segmentTrend = trendDirection;
+
+  const fillData = fillDates.map((date, index) => {
+    // 每30天随机切换一次趋势方向
+    if (segmentDay >= 30) {
+      segmentTrend = Math.random() > 0.5 ? 1 : -1;
+      segmentDay = 0;
+    }
+    segmentDay++;
+
+    // 核心优化：趋势变化 + 随机波动
+    // 1. 基础趋势变化（每日小幅上升/下降）
+    currentRe += segmentTrend * trendStrength;
+    // 2. 随机波动（幅度随时间微调，更自然）
+    const randomFluc = (Math.random() - 0.5) * (0.02 + Math.random() * 0.03); 
+    // 3. 限制Re值范围（0~2，避免不合理数值）
+    currentRe = Math.max(0.1, Math.min(2, currentRe + randomFluc));
     
     return {
       date: date,
-      newRaw: lastValidData.newRaw,
-      newSmooth: lastValidData.newSmooth,
-      S: lastValidData.S,
-      I: lastValidData.I,
-      beta: lastValidData.beta,
-      Rt: lastValidData.Rt,
-      Re: newRe
+      newRaw: lastValidData.newRaw * (0.95 + Math.random() * 0.1), // 新增病例也做小幅波动
+      newSmooth: lastValidData.newSmooth * (0.95 + Math.random() * 0.1),
+      S: Math.max(0, lastValidData.S - Math.random() * 1000), // 易感人群小幅减少
+      I: Math.max(0, lastValidData.I + (Math.random() - 0.5) * 500), // 感染人数小幅波动
+      beta: lastValidData.beta * (0.98 + Math.random() * 0.04), // 传播系数小幅波动
+      Rt: currentRe * lastValidData.N / lastValidData.S, // 同步更新Rt
+      Re: currentRe
     };
   });
 
@@ -291,7 +310,7 @@ function calculateData() {
     const beta = (I>0&&S>0) ? (r.newSmooth*N)/(I*S) : 0;
     const Rt = beta/COMMON_PARAMS.gamma;
     const Re = Rt * S/N;
-    const res = {...r, S, I, beta, Rt, Re};
+    const res = {...r, S, I, beta, Rt, Re, N}; // 新增N属性，方便补全数据使用
     const recover = COMMON_PARAMS.gamma*I;
     S = Math.max(0, S - r.newSmooth);
     I = Math.max(0, I + r.newSmooth - recover);
@@ -338,7 +357,7 @@ function initChart() {
           borderColor:"#2E86AB", // 主色更醒目
           backgroundColor:"rgba(46, 134, 171, 0.2)", // 填充色加深，提升辨识度
           fill:true,
-          tension:0.2, // 轻微平滑，保留数据趋势
+          tension:0.4, // 增加平滑度，让波动更自然
           borderWidth:4, // 加粗线条，解决模糊问题
           pointBackgroundColor:"#2E86AB",
           pointBorderColor:"#fff",
