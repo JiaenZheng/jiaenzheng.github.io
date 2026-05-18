@@ -22,7 +22,6 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
 .item{padding:14px;background:#f5f7fa;border-radius:10px;margin:10px 0}
 .item div{margin:4px 0}
 .loading{text-align:center;padding:20px;color:#666}
-#debugLog{margin:10px 0;padding:10px;background:#f0f0f0;border-radius:8px;font-size:12px;color:#333;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -92,7 +91,6 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
       <input type="date" id="dateSel" disabled>
       <button onclick="runQuery()" disabled>查询数据 / Query Data</button>
     </div>
-    <div id="debugLog">调试日志：加载中...</div>
     <div class="loading" id="loading">加载中... Loading...</div>
   </div>
 
@@ -106,9 +104,8 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
 </div>
 
 <script>
-// ========== 核心：和你仓库文件名1:1匹配 ==========
 const STATE_CONFIG = {
-  Ohio: { population:11700000, csvFileName:"ohio_data.csv", ruralRatio:0.2 },
+  Ohio: { population:11700000, csvFileName:"Ohio_data.csv", ruralRatio:0.2 },
   Alabama: { population:5024279, csvFileName:"Alabama_data.csv", ruralRatio:0.35 },
   Alaska: { population:733583, csvFileName:"Alaska_data.csv", ruralRatio:0.65 },
   Arizona: { population:7379654, csvFileName:"Arizona_data.csv", ruralRatio:0.28 },
@@ -117,7 +114,6 @@ const STATE_CONFIG = {
   Colorado: { population:5893634, csvFileName:"Colorado_data.csv", ruralRatio:0.32 },
   Connecticut: { population:3605944, csvFileName:"Connecticut_data.csv", ruralRatio:0.18 },
   Delaware: { population:1003384, csvFileName:"Delaware_data.csv", ruralRatio:0.22 },
-  DistrictOfColumbia: { population:712816, csvFileName:"districtofcolumbia_data.csv", ruralRatio:0 },
   Florida: { population:21538187, csvFileName:"Florida_data.csv", ruralRatio:0.14 },
   Georgia: { population:10711908, csvFileName:"Georgia_data.csv", ruralRatio:0.24 },
   Hawaii: { population:1455271, csvFileName:"Hawaii_data.csv", ruralRatio:0.21 },
@@ -138,38 +134,33 @@ const STATE_CONFIG = {
   Montana: { population:1122867, csvFileName:"Montana_data.csv", ruralRatio:0.69 },
   Nebraska: { population:1963692, csvFileName:"Nebraska_data.csv", ruralRatio:0.53 },
   Nevada: { population:3104614, csvFileName:"Nevada_data.csv", ruralRatio:0.33 },
-  NewHampshire: { population:1388992, csvFileName:"NewHampshire_data.csv", ruralRatio:0.42 },
-  NewJersey: { population:9288994, csvFileName:"NewJersey_data.csv", ruralRatio:0.11 },
-  NewMexico: { population:2117522, csvFileName:"NewMexico_data.csv", ruralRatio:0.54 },
-  NewYork: { population:20201249, csvFileName:"NewYork_data.csv", ruralRatio:0.12 },
-  NorthCarolina: { population:10439388, csvFileName:"NorthCarolina_data.csv", ruralRatio:0.26 },
-  NorthDakota: { population:779261, csvFileName:"NorthDakota_data.csv", ruralRatio:0.63 },
   Oklahoma: { population:3959353, csvFileName:"Oklahoma_data.csv", ruralRatio:0.43 },
   Oregon: { population:4237256, csvFileName:"Oregon_data.csv", ruralRatio:0.39 },
   Pennsylvania: { population:12801989, csvFileName:"Pennsylvania_data.csv", ruralRatio:0.21 },
-  RhodeIsland: { population:1097379, csvFileName:"RhodeIsland_data.csv", ruralRatio:0.20 },
-  SouthCarolina: { population:5210095, csvFileName:"SouthCarolina_data.csv", ruralRatio:0.27 },
-  SouthDakota: { population:909824, csvFileName:"SouthDakota_data.csv", ruralRatio:0.62 },
   Tennessee: { population:6910840, csvFileName:"Tennessee_data.csv", ruralRatio:0.30 },
   Texas: { population:29145505, csvFileName:"Texas_data.csv", ruralRatio:0.18 },
   Utah: { population:3380800, csvFileName:"Utah_data.csv", ruralRatio:0.35 },
   Vermont: { population:643077, csvFileName:"Vermont_data.csv", ruralRatio:0.56 },
   Virginia: { population:8631393, csvFileName:"Virginia_data.csv", ruralRatio:0.23 },
   Washington: { population:7705281, csvFileName:"Washington_data.csv", ruralRatio:0.25 },
-  WestVirginia: { population:1782959, csvFileName:"WestVirginia_data.csv", ruralRatio:0.51 },
   Wisconsin: { population:5893718, csvFileName:"Wisconsin_data.csv", ruralRatio:0.37 },
-  Wyoming: { population:578803, csvFileName:"Wyoming_data.csv", ruralRatio:0.72 }
+  Wyoming: { population:578803, csvFileName:"Wyoming_data.csv", ruralRatio:0.72 },
+  NewHampshire: { population:1388992, csvFileName:"NewHampshire_data.csv", ruralRatio:0.42 },
+  NewJersey: { population:9288994, csvFileName:"NewJersey_data.csv", ruralRatio:0.11 },
+  NewMexico: { population:2117522, csvFileName:"NewMexico_data.csv", ruralRatio:0.54 },
+  NewYork: { population:20201249, csvFileName:"NewYork_data.csv", ruralRatio:0.12 },
+  NorthCarolina: { population:10439388, csvFileName:"NorthCarolina_data.csv", ruralRatio:0.26 },
+  NorthDakota: { population:779261, csvFileName:"NorthDakota_data.csv", ruralRatio:0.63 },
+  RhodeIsland: { population:1097379, csvFileName:"RhodeIsland_data.csv", ruralRatio:0.20 },
+  SouthCarolina: { population:5210095, csvFileName:"SouthCarolina_data.csv", ruralRatio:0.27 },
+  SouthDakota: { population:909824, csvFileName:"SouthDakota_data.csv", ruralRatio:0.62 },
+  WestVirginia: { population:1782959, csvFileName:"WestVirginia_data.csv", ruralRatio:0.51 },
+  DistrictOfColumbia: { population:712816, csvFileName:"districtofcolumbia_data.csv", ruralRatio:0 }
 };
 
 const COMMON_PARAMS = { gamma:0.2, smoothWindow:7, reWarnThreshold:1.2, growthWarnThreshold:0.3, ruralUrbanRatio:0.77 };
 
 let currentState = "Ohio", rawData = [], calcData = [], chart = null;
-
-// 调试日志函数
-function logDebug(msg) {
-  const logEl = document.getElementById("debugLog");
-  logEl.textContent = `[${new Date().toLocaleTimeString()}] ${msg}\n${logEl.textContent}`;
-}
 
 function formatDate(d) {
   const date = new Date(d.replace(/\//g, '-'));
@@ -179,15 +170,9 @@ function formatDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-// 直接使用配置好的完整文件名，不做任何转换
 function loadStateData() {
   currentState = document.getElementById("stateSel").value;
-  const config = STATE_CONFIG[currentState];
-  const csvFile = config.csvFileName;
-  
-  // 清空日志+打印当前加载的文件名
-  document.getElementById("debugLog").textContent = "";
-  logDebug(`开始加载 ${currentState}，文件名：${csvFile}`);
+  const csvFile = STATE_CONFIG[currentState].csvFileName;
 
   document.getElementById("loading").style.display="block";
   document.getElementById("resultContainer").style.display="none";
@@ -196,26 +181,20 @@ function loadStateData() {
   document.querySelector("button").disabled=true;
   document.getElementById("dateRangeText").textContent = "数据日期范围 Data Range：加载中... Loading...";
 
-  // 直接加载配置的文件名
   Papa.parse(csvFile, { 
     download:true, 
     header:true, 
     skipEmptyLines:true,
     complete:r=>{
-      logDebug(`文件加载完成，原始数据行数：${r.data.length}`);
       const validData = r.data.filter(x=>x.date&&x.cases&&!isNaN(+x.cases))
         .map(x=>({date:formatDate(x.date), totalCases:+x.cases}))
         .sort((a,b)=>new Date(a.date)-new Date(b.date));
-      
-      logDebug(`有效数据行数（过滤后）：${validData.length}`);
       if(validData.length===0) {
-        logDebug("错误：无有效数据！");
         alert(`${currentState} 无有效数据 / No valid data，自动切回Ohio州`);
         document.getElementById("stateSel").value = "Ohio";
         loadStateData();
         return;
       }
-      
       rawData = validData;
       calculateData();
       setDateRange();
@@ -223,11 +202,9 @@ function loadStateData() {
       runQuery();
       document.getElementById("loading").style.display="none";
       document.getElementById("resultContainer").style.display="grid";
-      logDebug("数据加载成功！");
     },
-    error:(err)=>{
-      logDebug(`加载失败：${err.message}，文件名：${csvFile}`);
-      alert(`${currentState} 文件加载失败 / File load failed，自动切回Ohio州`);
+    error:()=>{
+      alert(`${currentState} 文件加载失败，自动切回Ohio州`);
       document.getElementById("stateSel").value = "Ohio";
       loadStateData();
     }
@@ -364,11 +341,7 @@ function runQuery() {
   </div>`;
 }
 
-// 页面加载完成后初始化
-window.onload=()=>{
-  logDebug("页面初始化完成，开始加载默认州 Ohio");
-  loadStateData();
-};
+window.onload=()=>loadStateData();
 </script>
 </body>
 </html>
