@@ -559,12 +559,14 @@ function runQuery() {
   }
 
   let targetDate = inputDate;
-  let tip = "";
+  // 关键修改1：删除5年前数据提示文字的变量定义
+  // let tip = "";
 
-  if (input > new Date(csvMaxDate)) {
-    targetDate = getDateMinus5Years(inputDate);
-    tip = `<div style="color:#888;font-size:12px">（已自动使用 5 年前同期数据 / Automatically use data from 5 years ago：${targetDate}）</div>`;
-  }
+  // 关键修改2：注释/删除自动使用5年前数据的逻辑（如需完全移除可直接删除该if块）
+  // if (input > new Date(csvMaxDate)) {
+  //   targetDate = getDateMinus5Years(inputDate);
+  //   tip = `<div style="color:#888;font-size:12px">（已自动使用 5 年前同期数据 / Automatically use data from 5 years ago：${targetDate}）</div>`;
+  // }
 
   const target = calcData.find(x => x.date === targetDate);
   if (!target) {
@@ -588,7 +590,8 @@ function runQuery() {
     <div><strong>查询日期 / Query Date</strong>：${inputDate}</div>
     <div><strong>当日新增 / New Cases</strong>：${Math.round(target.newRaw)}</div>
     <div><strong>Re 指数 / Re Index</strong>：<span style="color:${target.Re>1.2?'red':'green'}">${target.Re.toFixed(2)}</span></div>
-    ${tip}
+    <!-- 关键修改3：删除提示文字的渲染 -->
+    <!-- ${tip} -->
   </div>`;
 
   document.getElementById("resForecast").innerHTML = `
