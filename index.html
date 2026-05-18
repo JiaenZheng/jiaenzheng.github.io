@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>RM-SIR 疫情监测系统 v20260518 双语版</title>
+<title>RM-SIR 疫情监测系统 v20260518 论文公式版</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -156,8 +156,9 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
 </div>
 
 <script>
-console.log("=== 版本校验：2026-05-18 最终双语版 ===");
+console.log("=== 版本校验：2026-05-18 论文公式修正版 ===");
 console.log("如果看到这行，说明你加载到了最新版本！");
+console.log("已按照论文公式(6)修正了72小时预测和增长率计算！");
 
 const US_STATES = [
   {value:"Ohio", name:"Ohio（俄亥俄州）", population:11700000, csv:"ohio_data.csv", rural:0.2},
@@ -378,18 +379,25 @@ function completeDataToToday() {
   const last = calcData[calcData.length-1];
   
   let currentRe = last.Re;
+  let currentNew = last.newSmooth;
+  let currentS = last.S;
+  let currentI = last.I;
   const fillData = fillDates.map(date => {
     currentRe += (Math.random() - 0.5) * 0.08;
     currentRe = Math.max(0.1, Math.min(2.5, currentRe));
     
+    currentNew = currentNew * (0.98 + Math.random() * 0.04);
+    currentS = Math.max(0, currentS - currentNew);
+    currentI = Math.max(0, currentI + currentNew - COMMON_PARAMS.gamma * currentI);
+    
     return {
       date: date,
-      newRaw: last.newRaw * (0.95 + Math.random() * 0.1),
-      newSmooth: last.newSmooth * (0.95 + Math.random() * 0.1),
-      S: Math.max(0, last.S - Math.random() * 1000),
-      I: Math.max(0, last.I + (Math.random() - 0.5) * 500),
+      newRaw: currentNew,
+      newSmooth: currentNew,
+      S: currentS,
+      I: currentI,
       beta: last.beta * (0.98 + Math.random() * 0.04),
-      Rt: currentRe * last.N / last.S,
+      Rt: currentRe * last.N / currentS,
       Re: currentRe,
       N: last.N
     };
@@ -483,21 +491,36 @@ function initChart(cfg) {
   });
 }
 
+// 【核心修正】按照论文公式实现的72小时预测！
 function predict72h(last) {
   let S = last.S, I = last.I;
-  let newCases = 0;
+  const newCasesToday = last.newSmooth;
   
-  for(let i=0; i<3; i++) {
-    const newI = last.beta * S * I / last.N;
-    const rec = COMMON_PARAMS.gamma * I;
-    newCases += newI;
-    S = Math.max(0, S - newI);
-    I = Math.max(0, I + newI - rec);
-  }
+  // 模拟第1天
+  let newI = last.beta * S * I / last.N;
+  const rec = COMMON_PARAMS.gamma * I;
+  S = Math.max(0, S - newI);
+  I = Math.max(0, I + newI - rec);
   
+  // 模拟第2天
+  newI = last.beta * S * I / last.N;
+  S = Math.max(0, S - newI);
+  I = Math.max(0, I + newI - rec);
+  
+  // 模拟第3天！这才是我们要的！
+  newI = last.beta * S * I / last.N;
+  S = Math.max(0, S - newI);
+  I = Math.max(0, I + newI - rec);
+  
+  // 第3天的单日新增！不是3天总和！
+  const newCases3Day = newI;
+  // 增长率：(第3天的单日新增 - 今天的单日新增) / 今天的单日新增
+  // 这就是论文里的公式(6)！
+  const growth = newCasesToday===0 ? 0 : (newCases3Day - newCasesToday) / newCasesToday;
+  // 第3天的Re
   const nextRe = (last.beta / COMMON_PARAMS.gamma) * S / last.N;
-  const growth = last.newSmooth===0 ? 0 : (newCases - last.newSmooth) / last.newSmooth;
-  return { newCases, nextRe, growth };
+  
+  return { newCases: newCases3Day, nextRe, growth };
 }
 
 function splitUrbanRuralBeta(beta, ruralRatio) {
@@ -514,13 +537,13 @@ function runQuery() {
   const cfg = regions.find(r => r.value === currentRegion);
   
   const statePred = predict72h(target);
-  const stateWarn = statePred.nextRe > COMMON_PARAMS.reWarnThreshold && statePred.growth > 0.3;
+  const stateWarn = statePred.nextRe > COMMON_PARAMS.reWarnThreshold && statePred.growth > COMMON_PARAMS.growthWarnThreshold;
   
   const {urbanBeta, ruralBeta} = splitUrbanRuralBeta(target.beta, cfg.rural);
   const urbanPred = predict72h({S:target.S*0.8, I:target.I*0.8, beta:urbanBeta, newSmooth:target.newSmooth*0.8, N:target.N*0.8});
   const ruralPred = predict72h({S:target.S*0.2, I:target.I*0.2, beta:ruralBeta, newSmooth:target.newSmooth*0.2, N:target.N*0.2});
-  const urbanWarn = urbanPred.nextRe > COMMON_PARAMS.reWarnThreshold && urbanPred.growth > 0.3;
-  const ruralWarn = ruralPred.nextRe > COMMON_PARAMS.reWarnThreshold && ruralPred.growth > 0.3;
+  const urbanWarn = urbanPred.nextRe > COMMON_PARAMS.reWarnThreshold && urbanPred.growth > COMMON_PARAMS.growthWarnThreshold;
+  const ruralWarn = ruralPred.nextRe > COMMON_PARAMS.reWarnThreshold && ruralPred.growth > COMMON_PARAMS.growthWarnThreshold;
   
   const uavTip = ruralWarn ? "⚠️ 优先农村配送 / Priority Rural Dispatch" : 
                  urbanWarn ? "⚠️ 优先城市配送 / Priority Urban Dispatch" : 
@@ -539,7 +562,6 @@ function runQuery() {
     <div>预警状态：${stateWarn?'⚠️ 预警 / Warning':'✅ 安全 / Safe'}</div>
   `;
   
-  // 这里补齐了城乡的增长率！
   document.getElementById("resUrban").innerHTML = `
     <div><strong>城市 72h预测：Re=${urbanPred.nextRe.toFixed(2)} 增长率=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</strong></div>
     <div>Urban 72h Forecast: Re=${urbanPred.nextRe.toFixed(2)} Growth=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</div>
