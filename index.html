@@ -163,6 +163,7 @@ const STATE_CONFIG = {
 const COMMON_PARAMS = { gamma:0.2, smoothWindow:7, reWarnThreshold:1.2, growthWarnThreshold:0.3, ruralUrbanRatio:0.77 };
 
 let currentState = "Ohio", rawData = [], calcData = [], chart = null;
+let csvMinDate = "", csvMaxDate = ""; // 新增：存储CSV的日期范围
 
 function formatDate(d) {
   const date = new Date(d.replace(/\//g, '-'));
@@ -239,13 +240,16 @@ function calculateData() {
 }
 
 function setDateRange() {
-  const minDate = calcData[0].date;
-  const maxDate = calcData[calcData.length-1].date;
-  document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${minDate} ~ ${maxDate}`;
+  csvMinDate = calcData[0].date; // 存储CSV最小日期
+  csvMaxDate = calcData[calcData.length-1].date; // 存储CSV最大日期
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  
+  document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${csvMinDate} ~ ${csvMaxDate}（支持查询至 ${todayStr}）`;
   const dateInput = document.getElementById("dateSel");
-  dateInput.min = minDate;
-  dateInput.max = maxDate;
-  dateInput.value = minDate;
+  dateInput.min = csvMinDate; // 最小日期仍为CSV起始
+  dateInput.max = todayStr;   // 最大日期改为访问当日
+  dateInput.value = csvMinDate;
   dateInput.disabled = false;
   document.querySelector("button").disabled = false;
 }
@@ -301,10 +305,39 @@ function splitUrbanRuralBeta(totalBeta) {
   return {urbanBeta, ruralBeta, urbanRatio, ruralRatio};
 }
 
+// 新增：日期往前推5年的工具函数
+function getDateMinus5Years(dateStr) {
+  const date = new Date(dateStr);
+  date.setFullYear(date.getFullYear() - 5);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
 function runQuery() {
-  const targetDate = document.getElementById("dateSel").value;
+  const inputDate = document.getElementById("dateSel").value;
+  const csvMax = new Date(csvMaxDate);
+  const input = new Date(inputDate);
+  const today = new Date();
+  today.setHours(0,0,0,0); // 清空时分秒，只比较日期
+  
+  // 输入日期超过访问当日 → 提示
+  if(input > today) {
+    return alert("所选日期超出查询范围 / Selected date exceeds query range，请选择今日或之前的日期");
+  }
+
+  let targetDate = inputDate;
+  let tipText = "";
+  
+  // 输入日期在CSV范围之后 → 往前推5年
+  if(input > csvMax) {
+    targetDate = getDateMinus5Years(inputDate);
+    tipText = `<div style="color:#999;margin-top:8px;font-size:12px;">提示：所选日期超出CSV数据范围，已使用5年前同期数据（${targetDate}）计算</div>`;
+  }
+
+  // 查找目标日期数据
   const target = calcData.find(x=>x.date===targetDate);
-  if(!target) return alert("所选日期无数据 / No data for selected date，请重新选择");
+  if(!target) {
+    return alert(`所选日期无对应数据 / No data for ${targetDate}，请重新选择`);
+  }
 
   const statePred = predict72h(target.S, target.I, target.beta, target.newSmooth);
   const stateWarn = statePred.Re>1.2 && statePred.growth>0.3;
@@ -316,11 +349,13 @@ function runQuery() {
 
   const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）/ Prioritize Rural Delivery":urbanWarn?"⚠️ 优先城市配送（高风险）/ Prioritize Urban Delivery":"✅ 无需紧急配送（风险可控）/ No Urgent Delivery";
 
+  // 显示原始输入日期，保留提示文本
   document.getElementById("resToday").innerHTML=
   `<div class="item">
-    <div><strong>日期 Date</strong>：${target.date}</div>
+    <div><strong>查询日期 Query Date</strong>：${inputDate}</div>
     <div><strong>当日新增（原始）Raw New</strong>：${Math.round(target.newRaw)}</div>
     <div><strong>当前Re指数 Current Re</strong>：<span style="color:${target.Re>1.2?'#F53F3F':'#00B42A'}">${target.Re.toFixed(2)}</span></div>
+    ${tipText}
   </div>`;
 
   document.getElementById("resForecast").innerHTML=
