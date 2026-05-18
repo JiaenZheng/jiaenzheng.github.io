@@ -21,8 +21,8 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
 .full{grid-column:1 / -1}
 .item{padding:14px;background:#f5f7fa;border-radius:10px;margin:10px 0}
 .loading{text-align:center;padding:20px;color:#666}
-/* 优化：图表容器加高+加宽，提升清晰度 */
-.chart-container {position: relative; height:500px; width:100%; margin:0 auto;}
+/* 优化：图表容器加高+加宽+左侧预留更多空间，解决Y轴标题显示问题 */
+.chart-container {position: relative; height:500px; width:100%; margin:0 auto; padding-left:80px;}
 /* 修复：数据卡片字体加粗，提升可读性 */
 .item div {font-size:15px; line-height:1.8;}
 .item strong {font-size:16px;}
@@ -338,7 +338,7 @@ function setDateRange() {
   document.querySelector("button").disabled = false;
 }
 
-// 核心优化：还原图表样式+提升清晰度+双语展示
+// 核心优化：修复Y轴标题显示问题+保留所有优化
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
   if(chart) chart.destroy();
@@ -397,15 +397,36 @@ function initChart() {
         mode: 'index',
         intersect: false,
       },
+      // 关键修复：调整布局，给Y轴标题预留更多空间
+      layout: {
+        padding: {
+          left: 20,  // 左侧预留空间
+          right: 10,
+          top: 10,
+          bottom: 10
+        }
+      },
       scales:{
         y:{
           min:0,
           max:3, 
           title:{
             display:true, 
-            text:"Re 指数 (有效再生数) / Re Index (Effective Reproduction Number)",
-            font: { size:16, weight:'bold', family:'Microsoft YaHei' },
-            color:"#333"
+            // 修复1：拆分标题为两行，避免文字过长
+            text: [
+              "Re 指数 (有效再生数)",
+              "Re Index (Effective Reproduction Number)"
+            ],
+            font: { size:14, weight:'bold', family:'Microsoft YaHei' }, // 微调字体大小，确保显示完整
+            color:"#333",
+            // 修复2：调整标题位置和旋转角度
+            align: 'middle',
+            rotation: 0, // 取消旋转，改为水平显示（两行）
+            padding: {
+              top: 0,
+              bottom: 70, // 调整标题与坐标轴的距离
+              left: -60 // 左移标题，适配预留空间
+            }
           },
           ticks: {
             font: { size:14, family:'Microsoft YaHei' }, // 加大刻度字体
@@ -415,13 +436,18 @@ function initChart() {
                 return `${value} (预警线 / Warning)`;
               }
               return value.toFixed(1); // Y轴刻度保留1位小数
-            }
+            },
+            // 修复3：调整刻度标签位置，避免遮挡
+            padding: 15
           },
           grid: {
             color: 'rgba(0,0,0,0.1)', // 网格线加深，提升清晰度
             drawBorder: true, // 显示Y轴边框
             borderColor: '#666'
-          }
+          },
+          // 修复4：调整Y轴整体位置
+          position: 'left',
+          offset: true // 允许偏移，避免标题与刻度重叠
         },
         x:{
           ticks:{
@@ -435,7 +461,10 @@ function initChart() {
             display:true, 
             text:"日期 / Date",
             font: { size:16, weight:'bold', family:'Microsoft YaHei' },
-            color:"#333"
+            color:"#333",
+            padding: {
+              top: 15 // 调整X轴标题与坐标轴的距离
+            }
           },
           grid: {
             display: false // 隐藏X轴网格线，减少干扰
