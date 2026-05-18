@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RM‑SIR 美国50州疫情指数监测系统</title>
+<title>RM‑SIR 美国50州疫情指数监测系统 / RM‑SIR US 50 States Epidemic Monitoring & UAV Dispatch System</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei",Arial,sans-serif}
 body{background:#f5f7fa;padding:24px}
-.container{max-width:1200px;margin:0 auto}
+.container{max-width:1400px;margin:0 auto} /* 加宽容器，优化图表显示 */
 header{background:#165DFF;color:#fff;padding:28px;border-radius:16px;text-align:center;margin-bottom:24px}
 header h1{font-size:24px;margin-bottom:8px}
 header p{opacity:0.9;font-size:14px}
@@ -21,8 +21,11 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
 .full{grid-column:1 / -1}
 .item{padding:14px;background:#f5f7fa;border-radius:10px;margin:10px 0}
 .loading{text-align:center;padding:20px;color:#666}
-/* 新增：图表容器优化 */
-.chart-container {position: relative; height:400px; width:100%;}
+/* 优化：图表容器加高+加宽，提升清晰度 */
+.chart-container {position: relative; height:500px; width:100%; margin:0 auto;}
+/* 修复：数据卡片字体加粗，提升可读性 */
+.item div {font-size:15px; line-height:1.8;}
+.item strong {font-size:16px;}
 </style>
 </head>
 <body>
@@ -264,7 +267,7 @@ function loadStateData() {
       document.getElementById("resultContainer").style.display="grid";
     },
     error:()=>{
-      alert(`${currentState} 文件加载失败，自动切回Ohio州`);
+      alert(`${currentState} 文件加载失败 / File load failed，自动切回Ohio州`);
       document.getElementById("stateSel").value = "Ohio";
       loadStateData();
     }
@@ -307,7 +310,7 @@ function getTodayDate() {
 
 function setDateRange() {
   const todayStr = getTodayDate();
-  document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${csvMinDate} ~ ${todayStr}（原始数据至 ${csvMaxDate}，后续为预测补全）`;
+  document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${csvMinDate} ~ ${todayStr}（原始数据至 ${csvMaxDate}，后续为预测补全 / Original data up to ${csvMaxDate}, rest are predicted）`;
   const dateInput = document.getElementById("dateSel");
   dateInput.min = csvMinDate;
   dateInput.max = todayStr;
@@ -316,7 +319,7 @@ function setDateRange() {
   document.querySelector("button").disabled = false;
 }
 
-// 核心优化：还原图表样式+使用补全后的数据
+// 核心优化：还原图表样式+提升清晰度+双语展示
 function initChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
   if(chart) chart.destroy();
@@ -330,32 +333,37 @@ function initChart() {
       labels: fullData.map(x=>x.date), // 使用补全后的日期
       datasets:[
         {
-          label:`${currentState} 州 Re指数 (7日平滑)`,
+          label:`${currentState} 州 Re指数 (7日平滑) / ${currentState} State Re Index (7-day Smooth)`,
           data: fullData.map(x=>x.Re.toFixed(3)), // 保留3位小数更精准
-          borderColor:"#2E86AB", // 还原更美观的主色
-          backgroundColor:"rgba(46, 134, 171, 0.15)", // 浅蓝填充
+          borderColor:"#2E86AB", // 主色更醒目
+          backgroundColor:"rgba(46, 134, 171, 0.2)", // 填充色加深，提升辨识度
           fill:true,
-          tension:0.4, // 更顺滑的曲线
-          borderWidth:3, // 加粗线条
+          tension:0.2, // 轻微平滑，保留数据趋势
+          borderWidth:4, // 加粗线条，解决模糊问题
           pointBackgroundColor:"#2E86AB",
           pointBorderColor:"#fff",
-          pointRadius:4, // 大点更清晰
+          pointRadius:3, // 优化点大小
           pointHoverRadius:6, // hover放大
-          order: 1
+          order: 1,
+          // 新增：关闭点密集显示，提升清晰度
+          pointRadius: function(context) {
+            const chart = context.chart;
+            const {ctx, chartArea} = chart;
+            if (!chartArea) return 0;
+            // 仅在鼠标hover时显示点，否则隐藏
+            return context.active ? 5 : 0;
+          }
         },
         {
-          label:"预警阈值 Re=1.2",
+          label:"预警阈值 Re=1.2 / Warning Threshold Re=1.2",
           data: warnLineData,
           borderColor:"#E63946", // 预警线红色更醒目
-          borderWidth: 2.5,
-          borderDash: [8, 4], // 更美观的虚线样式
+          borderWidth: 3, // 加粗预警线
+          borderDash: [6, 3], // 优化虚线样式，更清晰
           fill: false,
           tension: 0,
           pointRadius: 0,
-          order: 0,
-          // 预警线单独样式
-          borderDashOffset: 0,
-          pointHoverRadius: 0
+          order: 0
         }
       ]
     },
@@ -363,7 +371,7 @@ function initChart() {
       responsive:true,
       maintainAspectRatio:false,
       animation: {
-        duration: 1000, // 加载动画更流畅
+        duration: 800, // 加载动画更流畅
         easing: 'easeOutQuart'
       },
       interaction: {
@@ -376,41 +384,42 @@ function initChart() {
           max:3, 
           title:{
             display:true, 
-            text:"Re 指数 (有效再生数)",
-            font: { size:14, weight:'bold', family:'Microsoft YaHei' },
+            text:"Re 指数 (有效再生数) / Re Index (Effective Reproduction Number)",
+            font: { size:16, weight:'bold', family:'Microsoft YaHei' },
             color:"#333"
           },
           ticks: {
-            font: { size:12, family:'Microsoft YaHei' },
-            color:"#666",
+            font: { size:14, family:'Microsoft YaHei' }, // 加大刻度字体
+            color:"#333",
             callback: function(value) {
               if (value === COMMON_PARAMS.reWarnThreshold) {
-                return `${value} (预警线)`;
+                return `${value} (预警线 / Warning)`;
               }
               return value.toFixed(1); // Y轴刻度保留1位小数
             }
           },
           grid: {
-            color: 'rgba(0,0,0,0.05)', // 浅色网格线
-            drawBorder: false // 隐藏Y轴边框
+            color: 'rgba(0,0,0,0.1)', // 网格线加深，提升清晰度
+            drawBorder: true, // 显示Y轴边框
+            borderColor: '#666'
           }
         },
         x:{
           ticks:{
             maxRotation:45, 
             autoSkip:true, 
-            maxTicksLimit:40, // 更多刻度更清晰
-            font: { size:11, family:'Microsoft YaHei' },
-            color:"#666"
+            maxTicksLimit:25, // 减少刻度数量，避免拥挤模糊
+            font: { size:12, family:'Microsoft YaHei' }, // 加大X轴字体
+            color:"#333"
           }, 
           title:{
             display:true, 
             text:"日期 / Date",
-            font: { size:14, weight:'bold', family:'Microsoft YaHei' },
+            font: { size:16, weight:'bold', family:'Microsoft YaHei' },
             color:"#333"
           },
           grid: {
-            display: false // 隐藏X轴网格线
+            display: false // 隐藏X轴网格线，减少干扰
           }
         }
       },
@@ -419,38 +428,40 @@ function initChart() {
           position: 'top',
           align: 'end',
           labels: {
-            font: { size:13, family:'Microsoft YaHei', weight:'500' },
+            font: { size:14, family:'Microsoft YaHei', weight:'bold' }, // 图例字体加粗加大
             color:"#333",
             padding: 20, // 图例间距
             usePointStyle: true, // 图例用点样式
-            pointStyle: 'circle'
+            pointStyle: 'circle',
+            pointRadius: 8 // 图例点加大
           }
         },
         tooltip: {
           mode: 'index',
           intersect: false,
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          titleFont: { size:14, family:'Microsoft YaHei' },
-          bodyFont: { size:12, family:'Microsoft YaHei' },
-          padding: 12,
+          backgroundColor: 'rgba(0,0,0,0.9)',
+          titleFont: { size:15, family:'Microsoft YaHei' },
+          bodyFont: { size:14, family:'Microsoft YaHei' },
+          padding: 15,
           cornerRadius: 8,
+          boxPadding: 5, // 加大tooltip内边距
           callbacks: {
             label: function(context) {
               if (context.datasetIndex === 1) {
-                return `预警阈值: ${context.raw} | Re≥1.2 触发疫情预警`;
+                return `预警阈值 / Warning Threshold: ${context.raw} | Re≥1.2 触发疫情预警 / Trigger epidemic warning`;
               }
               return `${context.dataset.label}: ${context.raw}`;
             },
             title: function(context) {
-              return `日期: ${context[0].label}`;
+              return `日期 / Date: ${context[0].label}`;
             }
           }
         },
-        // 新增：图表标题
+        // 新增：图表标题（双语）
         title: {
           display: true,
-          text: `${currentState} 州 Re指数趋势图 (含预测补全至今日)`,
-          font: { size:16, weight:'bold', family:'Microsoft YaHei' },
+          text: `${currentState} 州 Re指数趋势图 (含预测补全至今日) / ${currentState} State Re Index Trend Chart (Including Prediction to Today)`,
+          font: { size:18, weight:'bold', family:'Microsoft YaHei' },
           color:"#333",
           padding: { top:10, bottom:20 }
         }
@@ -504,7 +515,7 @@ function runQuery() {
 
   if (input > new Date(csvMaxDate)) {
     targetDate = getDateMinus5Years(inputDate);
-    tip = `<div style="color:#888;font-size:12px">（已自动使用 5 年前同期数据：${targetDate}）</div>`;
+    tip = `<div style="color:#888;font-size:12px">（已自动使用 5 年前同期数据 / Automatically use data from 5 years ago：${targetDate}）</div>`;
   }
 
   const target = calcData.find(x => x.date === targetDate);
@@ -521,33 +532,34 @@ function runQuery() {
   const urbanWarn = urbanPred.Re>1.2 && urbanPred.growth>0.3;
   const ruralWarn = ruralPred.Re>1.2 && ruralPred.growth>0.3;
 
-  const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）":urbanWarn?"⚠️ 优先城市配送（高风险）":"✅ 无需紧急配送（安全）";
+  const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险） / Prioritize rural delivery (High risk)":urbanWarn?"⚠️ 优先城市配送（高风险） / Prioritize urban delivery (High risk)":"✅ 无需紧急配送（安全） / No urgent delivery needed (Safe)";
 
+  // 完全恢复双语界面
   document.getElementById("resToday").innerHTML = `
   <div class="item">
-    <div><strong>查询日期</strong>：${inputDate}</div>
-    <div><strong>当日新增</strong>：${Math.round(target.newRaw)}</div>
-    <div><strong>Re 指数</strong>：<span style="color:${target.Re>1.2?'red':'green'}">${target.Re.toFixed(2)}</span></div>
+    <div><strong>查询日期 / Query Date</strong>：${inputDate}</div>
+    <div><strong>当日新增 / New Cases</strong>：${Math.round(target.newRaw)}</div>
+    <div><strong>Re 指数 / Re Index</strong>：<span style="color:${target.Re>1.2?'red':'green'}">${target.Re.toFixed(2)}</span></div>
     ${tip}
   </div>`;
 
   document.getElementById("resForecast").innerHTML = `
   <div class="item">
-    <div><strong>72小时预测 Re</strong>：${statePred.Re.toFixed(2)}</div>
-    <div><strong>72小时新增</strong>：${Math.round(statePred.newCases)}</div>
-    <div><strong>增速</strong>：${(statePred.growth*100).toFixed(1)}%</div>
-    <div><strong>预警</strong>：${stateWarn?'⚠️ 预警':'✅ 安全'}</div>
+    <div><strong>72小时预测 Re / 72h Predicted Re</strong>：${statePred.Re.toFixed(2)}</div>
+    <div><strong>72小时新增 / 72h New Cases</strong>：${Math.round(statePred.newCases)}</div>
+    <div><strong>增速 / Growth Rate</strong>：${(statePred.growth*100).toFixed(1)}%</div>
+    <div><strong>预警 / Warning</strong>：${stateWarn?'⚠️ 预警 / Warning':'✅ 安全 / Safe'}</div>
   </div>`;
 
   document.getElementById("resUrban").innerHTML = `
   <div class="item">
-    <div>城市 Urban：Re=${urbanPred.Re.toFixed(2)} 增速 ${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</div>
-    <div>农村 Rural：Re=${ruralPred.Re.toFixed(2)} 增速 ${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?'⚠️':'✅'}</div>
+    <div>城市 Urban：Re=${urbanPred.Re.toFixed(2)} 增速 Growth ${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</div>
+    <div>农村 Rural：Re=${ruralPred.Re.toFixed(2)} 增速 Growth ${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?'⚠️':'✅'}</div>
   </div>`;
 
   document.getElementById("resUAV").innerHTML = `
   <div class="item">
-    <div><strong>无人机建议</strong>：${uavTip}</div>
+    <div><strong>无人机建议 / UAV Dispatch Suggestion</strong>：${uavTip}</div>
   </div>`;
 }
 
