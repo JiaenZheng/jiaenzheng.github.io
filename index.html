@@ -535,13 +535,16 @@ function runQuery() {
   document.getElementById("resForecast").innerHTML = `
     <div><strong>72h预测 Re：${statePred.nextRe.toFixed(2)} / 72h Forecast Re: ${statePred.nextRe.toFixed(2)}</strong></div>
     <div>预测新增：${Math.round(statePred.newCases)} / Forecast New Cases: ${Math.round(statePred.newCases)}</div>
+    <div>增长率：${(statePred.growth*100).toFixed(1)}% / Growth: ${(statePred.growth*100).toFixed(1)}%</div>
     <div>预警状态：${stateWarn?'⚠️ 预警 / Warning':'✅ 安全 / Safe'}</div>
   `;
   
-  // 这里明确标注了72h预测！
+  // 这里补齐了城乡的增长率！
   document.getElementById("resUrban").innerHTML = `
-    <div><strong>城市 72h预测：Re=${urbanPred.nextRe.toFixed(2)} ${urbanWarn?'⚠️':'✅'} / Urban 72h Forecast: Re=${urbanPred.nextRe.toFixed(2)} ${urbanWarn?'⚠️':'✅'}</strong></div>
-    <div><strong>农村 72h预测：Re=${ruralPred.nextRe.toFixed(2)} ${ruralWarn?'⚠️':'✅'} / Rural 72h Forecast: Re=${ruralPred.nextRe.toFixed(2)} ${ruralWarn?'⚠️':'✅'}</strong></div>
+    <div><strong>城市 72h预测：Re=${urbanPred.nextRe.toFixed(2)} 增长率=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</strong></div>
+    <div>Urban 72h Forecast: Re=${urbanPred.nextRe.toFixed(2)} Growth=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</div>
+    <div><strong>农村 72h预测：Re=${ruralPred.nextRe.toFixed(2)} 增长率=${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?'⚠️':'✅'}</strong></div>
+    <div>Rural 72h Forecast: Re=${ruralPred.nextRe.toFixed(2)} Growth=${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?'⚠️':'✅'}</div>
   `;
   
   document.getElementById("resUAV").innerHTML = `
