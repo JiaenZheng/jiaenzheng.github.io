@@ -3,8 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RM‑SIR 疫情指数监测与无人机干预调度系统 / RM‑SIR Epidemic Monitoring & UAV Dispatch System</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- 强制禁用所有缓存 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>RM‑SIR 疫情指数监测与无人机干预调度系统</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
 * {
@@ -59,10 +63,12 @@ select, input[type="date"] {
   border: 1px solid #dcdfe6;
   border-radius: 8px;
   font-size: 14px;
-  min-width: 200px;
-  /* 修复下拉框错乱 */
-  max-height: 42px;
-  appearance: auto;
+  min-width: 220px;
+  height: 42px;
+  appearance: none;
+  background: #fff url('data:image/svg+xml;utf8,<svg fill="%23666" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>') no-repeat right 10px center;
+  background-size: 16px;
+  padding-right: 35px;
 }
 button {
   background: #165DFF;
@@ -72,6 +78,7 @@ button {
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
+  height: 42px;
   transition: background 0.2s;
 }
 button:hover { background: #0F52CC; }
@@ -81,8 +88,6 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-bottom: 20px;
-  display: grid !important;
-  opacity: 1 !important;
 }
 .full { grid-column: 1 / -1; }
 .item {
@@ -106,7 +111,7 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
   padding: 20px;
   color: #666;
   font-size: 16px;
-  display: none !important;
+  display: none;
 }
 .chart-container {
   position: relative;
@@ -121,29 +126,29 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
 <body>
 <div class="container">
   <header>
-    <h1>RM‑SIR 疫情指数监测与无人机干预调度系统 / RM‑SIR Epidemic Monitoring & UAV Dispatch System</h1>
-    <p id="dateRangeText">数据日期范围 Data Range：加载中... Loading...</p>
+    <h1>RM‑SIR 疫情指数监测与无人机干预调度系统</h1>
+    <p id="dateRangeText">数据日期范围：加载中...</p>
   </header>
 
   <div class="card">
     <div class="form">
-      <label>选择国家 / Select Country：</label>
-      <select id="countrySel" onchange="onCountryChange()">
-        <option value="US">美国 / United States</option>
-        <option value="CN">中国 / China</option>
+      <label>选择国家：</label>
+      <select id="countrySel">
+        <option value="US">美国</option>
+        <option value="CN">中国</option>
       </select>
-      <label id="regionLabel">选择州 / Select State：</label>
-      <select id="stateSel" onchange="loadStateData()"></select>
-      <label>选择日期 / Select Date：</label>
+      <label id="regionLabel">选择州：</label>
+      <select id="stateSel"></select>
+      <label>选择日期：</label>
       <input type="date" id="dateSel" disabled>
-      <button onclick="runQuery()" disabled>查询数据 / Query Data</button>
+      <button onclick="runQuery()" disabled>查询数据</button>
     </div>
-    <div id="loading" class="loading">加载中... Loading...</div>
+    <div id="loading" class="loading">加载中...</div>
     <div id="resultContainer" class="grid">
-      <div class="card"><div id="resToday" class="item">数据加载中... / Loading data...</div></div>
-      <div class="card"><div id="resForecast" class="item">数据加载中... / Loading data...</div></div>
-      <div class="card"><div id="resUrban" class="item">数据加载中... / Loading data...</div></div>
-      <div class="card"><div id="resUAV" class="item">数据加载中... / Loading data...</div></div>
+      <div class="card"><div id="resToday" class="item">数据加载中...</div></div>
+      <div class="card"><div id="resForecast" class="item">数据加载中...</div></div>
+      <div class="card"><div id="resUrban" class="item">数据加载中...</div></div>
+      <div class="card"><div id="resUAV" class="item">数据加载中...</div></div>
       <div class="card full chart-container">
         <canvas id="chartRe"></canvas>
       </div>
@@ -152,306 +157,396 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
 </div>
 
 <script>
-const COUNTRY_CONFIG = {
-  CN: {
-    name: "中国 / China",
-    regions: {
-      Guangdong: {
-        name: "Guangdong（广东省）",
-        population: 126000000,
-        csvFileName: "Guangdong_data.csv",
-        ruralRatio: 0.25
-      }
-    }
-  },
-  US: {
-    name: "美国 / United States",
-    regions: {
-      Ohio: { population:11700000, csvFileName:"ohio_data.csv", ruralRatio:0.2 },
-      Alabama: { population:5024279, csvFileName:"Alabama_data.csv", ruralRatio:0.35 },
-      Alaska: { population:733583, csvFileName:"Alaska_data.csv", ruralRatio:0.65 },
-      Arizona: { population:7379654, csvFileName:"Arizona_data.csv", ruralRatio:0.28 },
-      Arkansas: { population:3045637, csvFileName:"Arkansas_data.csv", ruralRatio:0.48 },
-      California: { population:39538223, csvFileName:"California_data.csv", ruralRatio:0.15 },
-      Colorado: { population:5893634, csvFileName:"Colorado_data.csv", ruralRatio:0.32 },
-      Connecticut: { population:3605944, csvFileName:"Connecticut_data.csv", ruralRatio:0.18 },
-      Delaware: { population:1003384, csvFileName:"Delaware_data.csv", ruralRatio:0.22 },
-      Florida: { population:21538187, csvFileName:"Florida_data.csv", ruralRatio:0.14 },
-      Georgia: { population:10711908, csvFileName:"Georgia_data.csv", ruralRatio:0.24 },
-      Hawaii: { population:1455271, csvFileName:"Hawaii_data.csv", ruralRatio:0.21 },
-      Idaho: { population:1900923, csvFileName:"Idaho_data.csv", ruralRatio:0.58 },
-      Illinois: { population:12812508, csvFileName:"Illinois_data.csv", ruralRatio:0.19 },
-      Indiana: { population:6833037, csvFileName:"Indiana_data.csv", ruralRatio:0.31 },
-      Iowa: { population:3190369, csvFileName:"Iowa_data.csv", ruralRatio:0.52 },
-      Kansas: { population:2937150, csvFileName:"Kansas_data.csv", ruralRatio:0.45 },
-      Kentucky: { population:4509342, csvFileName:"Kentucky_data.csv", ruralRatio:0.41 },
-      Louisiana: { population:4657757, csvFileName:"Louisiana_data.csv", ruralRatio:0.34 },
-      Maine: { population:1372247, csvFileName:"Maine_data.csv", ruralRatio:0.61 },
-      Maryland: { population:6177224, csvFileName:"Maryland_data.csv", ruralRatio:0.17 },
-      Massachusetts: { population:7029917, csvFileName:"Massachusetts_data.csv", ruralRatio:0.13 },
-      Michigan: { population:10077331, csvFileName:"Michigan_data.csv", ruralRatio:0.29 },
-      Minnesota: { population:5707390, csvFileName:"Minnesota_data.csv", ruralRatio:0.40 },
-      Mississippi: { population:2966407, csvFileName:"Mississippi_data.csv", ruralRatio:0.49 },
-      Missouri: { population:6169270, csvFileName:"Missouri_data.csv", ruralRatio:0.36 },
-      Montana: { population:1122867, csvFileName:"Montana_data.csv", ruralRatio:0.69 },
-      Nebraska: { population:1963692, csvFileName:"Nebraska_data.csv", ruralRatio:0.53 },
-      Nevada: { population:3104614, csvFileName:"Nevada_data.csv", ruralRatio:0.33 },
-      Oklahoma: { population:3959353, csvFileName:"Oklahoma_data.csv", ruralRatio:0.43 },
-      Oregon: { population:4237256, csvFileName:"Oregon_data.csv", ruralRatio:0.39 },
-      Pennsylvania: { population:12801989, csvFileName:"Pennsylvania_data.csv", ruralRatio:0.21 },
-      Tennessee: { population:6910840, csvFileName:"Tennessee_data.csv", ruralRatio:0.30 },
-      Texas: { population:29145505, csvFileName:"Texas_data.csv", ruralRatio:0.18 },
-      Utah: { population:3380800, csvFileName:"Utah_data.csv", ruralRatio:0.35 },
-      Vermont: { population:643077, csvFileName:"Vermont_data.csv", ruralRatio:0.56 },
-      Virginia: { population:8631393, csvFileName:"Virginia_data.csv", ruralRatio:0.23 },
-      Washington: { population:7705281, csvFileName:"Washington_data.csv", ruralRatio:0.25 },
-      Wisconsin: { population:5893718, csvFileName:"Wisconsin_data.csv", ruralRatio:0.37 },
-      Wyoming: { population:578803, csvFileName:"Wyoming_data.csv", ruralRatio:0.72 },
-      NewHampshire: { population:1388992, csvFileName:"NewHampshire_data.csv", ruralRatio:0.42 },
-      NewJersey: { population:9288994, csvFileName:"NewJersey_data.csv", ruralRatio:0.11 },
-      NewMexico: { population:2117522, csvFileName:"NewMexico_data.csv", ruralRatio:0.54 },
-      NewYork: { population:20201249, csvFileName:"NewYork_data.csv", ruralRatio:0.12 },
-      NorthCarolina: { population:10439388, csvFileName:"NorthCarolina_data.csv", ruralRatio:0.26 },
-      NorthDakota: { population:779261, csvFileName:"NorthDakota_data.csv", ruralRatio:0.63 },
-      RhodeIsland: { population:1097379, csvFileName:"RhodeIsland_data.csv", ruralRatio:0.20 },
-      SouthCarolina: { population:5210095, csvFileName:"SouthCarolina_data.csv", ruralRatio:0.27 },
-      SouthDakota: { population:909824, csvFileName:"SouthDakota_data.csv", ruralRatio:0.62 },
-      WestVirginia: { population:1782959, csvFileName:"WestVirginia_data.csv", ruralRatio:0.51 },
-      DistrictOfColumbia: { population:712816, csvFileName:"districtofcolumbia_data.csv", ruralRatio:0 }
-    }
-  }
-};
+// 预定义所有地区，避免动态渲染问题
+const US_STATES = [
+  {value:"Ohio", name:"俄亥俄州", population:11700000, csv:"ohio_data.csv", rural:0.2},
+  {value:"Alabama", name:"阿拉巴马州", population:5024279, csv:"Alabama_data.csv", rural:0.35},
+  {value:"Alaska", name:"阿拉斯加州", population:733583, csv:"Alaska_data.csv", rural:0.65},
+  {value:"Arizona", name:"亚利桑那州", population:7379654, csv:"Arizona_data.csv", rural:0.28},
+  {value:"Arkansas", name:"阿肯色州", population:3045637, csv:"Arkansas_data.csv", rural:0.48},
+  {value:"California", name:"加利福尼亚州", population:39538223, csv:"California_data.csv", rural:0.15},
+  {value:"Colorado", name:"科罗拉多州", population:5893634, csv:"Colorado_data.csv", rural:0.32},
+  {value:"Connecticut", name:"康涅狄格州", population:3605944, csv:"Connecticut_data.csv", rural:0.18},
+  {value:"Delaware", name:"特拉华州", population:1003384, csv:"Delaware_data.csv", rural:0.22},
+  {value:"Florida", name:"佛罗里达州", population:21538187, csv:"Florida_data.csv", rural:0.14},
+  {value:"Georgia", name:"佐治亚州", population:10711908, csv:"Georgia_data.csv", rural:0.24},
+  {value:"Hawaii", name:"夏威夷州", population:1455271, csv:"Hawaii_data.csv", rural:0.21},
+  {value:"Idaho", name:"爱达荷州", population:1900923, csv:"Idaho_data.csv", rural:0.58},
+  {value:"Illinois", name:"伊利诺伊州", population:12812508, csv:"Illinois_data.csv", rural:0.19},
+  {value:"Indiana", name:"印第安纳州", population:6833037, csv:"Indiana_data.csv", rural:0.31},
+  {value:"Iowa", name:"艾奥瓦州", population:3190369, csv:"Iowa_data.csv", rural:0.52},
+  {value:"Kansas", name:"堪萨斯州", population:2937150, csv:"Kansas_data.csv", rural:0.45},
+  {value:"Kentucky", name:"肯塔基州", population:4509342, csv:"Kentucky_data.csv", rural:0.41},
+  {value:"Louisiana", name:"路易斯安那州", population:4657757, csv:"Louisiana_data.csv", rural:0.34},
+  {value:"Maine", name:"缅因州", population:1372247, csv:"Maine_data.csv", rural:0.61},
+  {value:"Maryland", name:"马里兰州", population:6177224, csv:"Maryland_data.csv", rural:0.17},
+  {value:"Massachusetts", name:"马萨诸塞州", population:7029917, csv:"Massachusetts_data.csv", rural:0.13},
+  {value:"Michigan", name:"密歇根州", population:10077331, csv:"Michigan_data.csv", rural:0.29},
+  {value:"Minnesota", name:"明尼苏达州", population:5707390, csv:"Minnesota_data.csv", rural:0.40},
+  {value:"Mississippi", name:"密西西比州", population:2966407, csv:"Mississippi_data.csv", rural:0.49},
+  {value:"Missouri", name:"密苏里州", population:6169270, csv:"Missouri_data.csv", rural:0.36},
+  {value:"Montana", name:"蒙大拿州", population:1122867, csv:"Montana_data.csv", rural:0.69},
+  {value:"Nebraska", name:"内布拉斯加州", population:1963692, csv:"Nebraska_data.csv", rural:0.53},
+  {value:"Nevada", name:"内华达州", population:3104614, csv:"Nevada_data.csv", rural:0.33},
+  {value:"Oklahoma", name:"俄克拉荷马州", population:3959353, csv:"Oklahoma_data.csv", rural:0.43},
+  {value:"Oregon", name:"俄勒冈州", population:4237256, csv:"Oregon_data.csv", rural:0.39},
+  {value:"Pennsylvania", name:"宾夕法尼亚州", population:12801989, csv:"Pennsylvania_data.csv", rural:0.21},
+  {value:"Tennessee", name:"田纳西州", population:6910840, csv:"Tennessee_data.csv", rural:0.30},
+  {value:"Texas", name:"得克萨斯州", population:29145505, csv:"Texas_data.csv", rural:0.18},
+  {value:"Utah", name:"犹他州", population:3380800, csv:"Utah_data.csv", rural:0.35},
+  {value:"Vermont", name:"佛蒙特州", population:643077, csv:"Vermont_data.csv", rural:0.56},
+  {value:"Virginia", name:"弗吉尼亚州", population:8631393, csv:"Virginia_data.csv", rural:0.23},
+  {value:"Washington", name:"华盛顿州", population:7705281, csv:"Washington_data.csv", rural:0.25},
+  {value:"Wisconsin", name:"威斯康星州", population:5893718, csv:"Wisconsin_data.csv", rural:0.37},
+  {value:"Wyoming", name:"怀俄明州", population:578803, csv:"Wyoming_data.csv", rural:0.72},
+  {value:"NewHampshire", name:"新罕布什尔州", population:1388992, csv:"NewHampshire_data.csv", rural:0.42},
+  {value:"NewJersey", name:"新泽西州", population:9288994, csv:"NewJersey_data.csv", rural:0.11},
+  {value:"NewMexico", name:"新墨西哥州", population:2117522, csv:"NewMexico_data.csv", rural:0.54},
+  {value:"NewYork", name:"纽约州", population:20201249, csv:"NewYork_data.csv", rural:0.12},
+  {value:"NorthCarolina", name:"北卡罗来纳州", population:10439388, csv:"NorthCarolina_data.csv", rural:0.26},
+  {value:"NorthDakota", name:"北达科他州", population:779261, csv:"NorthDakota_data.csv", rural:0.63},
+  {value:"RhodeIsland", name:"罗得岛州", population:1097379, csv:"RhodeIsland_data.csv", rural:0.20},
+  {value:"SouthCarolina", name:"南卡罗来纳州", population:5210095, csv:"SouthCarolina_data.csv", rural:0.27},
+  {value:"SouthDakota", name:"南达科他州", population:909824, csv:"SouthDakota_data.csv", rural:0.62},
+  {value:"WestVirginia", name:"西弗吉尼亚州", population:1782959, csv:"WestVirginia_data.csv", rural:0.51},
+  {value:"DistrictOfColumbia", name:"哥伦比亚特区", population:712816, csv:"districtofcolumbia_data.csv", rural:0}
+];
 
-const COMMON_PARAMS = { 
-  gamma:0.2, 
-  smoothWindow:7, 
-  reWarnThreshold:1.2, 
-  growthWarnThreshold:0.3, 
-  ruralUrbanRatio:0.77 
-};
+const CN_PROVINCES = [
+  {value:"Guangdong", name:"广东省", population:126000000, csv:"Guangdong_data.csv", rural:0.25}
+];
 
+const COMMON_PARAMS = { gamma:0.2, reWarnThreshold:1.2 };
 let currentCountry = "US";
-let currentRegion = "Ohio";
-let rawData = [];
-let calcData = [];
-let fullData = [];
-let chart = null;
-let csvMinDate = "";
-let csvMaxDate = "";
+let currentRegion = null;
+let rawData = [], calcData = [], fullData = [], chart = null;
+let csvMinDate = "", csvMaxDate = "";
 
+// 工具函数
 function formatDate(d) {
-  if (!d) return "";
   const date = new Date(d);
   const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const day = String(date.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
 }
 function getTodayDate() { return formatDate(new Date()); }
-function generateDateRange(startDate, endDate) {
+function generateDateRange(start, end) {
   const dates = [];
-  let currentDate = new Date(startDate);
-  const finalDate = new Date(endDate);
-  while (currentDate <= finalDate) {
-    dates.push(formatDate(currentDate));
-    currentDate.setDate(currentDate.getDate() + 1);
+  let current = new Date(start);
+  const final = new Date(end);
+  while(current <= final) {
+    dates.push(formatDate(current));
+    current.setDate(current.getDate()+1);
   }
   return dates;
 }
 
-function completeDataToToday() {
-  try {
-    const todayStr = getTodayDate();
-    const csvLastDate = new Date(csvMaxDate);
-    const today = new Date(todayStr);
-    if (csvLastDate >= today) { fullData = [...calcData]; return; }
-    const fillDates = generateDateRange(new Date(csvLastDate).setDate(csvLastDate.getDate() + 1), today);
-    const lastValidData = calcData[calcData.length - 1] || {Re:1.0,newRaw:100,newSmooth:100,S:100000000*0.9,I:1000,beta:0.2,N:100000000};
-    let currentRe = lastValidData.Re;
-    const trendDirection = Math.random() > 0.5 ? 1 : -1;
-    const trendStrength = Math.random() * 0.0015;
-    let segmentDay = 0;
-    let segmentTrend = trendDirection;
-    const fillData = fillDates.map((date) => {
-      if (segmentDay >= 30) { segmentTrend = Math.random() > 0.5 ? 1 : -1; segmentDay = 0; }
-      segmentDay++;
-      currentRe += segmentTrend * trendStrength;
-      const randomFluc = (Math.random() - 0.5) * (0.02 + Math.random() * 0.03);
-      currentRe = Math.max(0.1, Math.min(2, currentRe + randomFluc));
-      return {date,newRaw:lastValidData.newRaw*(0.95+Math.random()*0.1),newSmooth:lastValidData.newSmooth*(0.95+Math.random()*0.1),S:Math.max(0,lastValidData.S-Math.random()*1000),I:Math.max(0,lastValidData.I+(Math.random()-0.5)*500),beta:lastValidData.beta*(0.98+Math.random()*0.04),Rt:currentRe*lastValidData.N/lastValidData.S,Re:currentRe};
-    });
-    fullData = [...calcData, ...fillData];
-  } catch (e) { console.error("补全失败",e); fullData = [...calcData]; }
-}
-
+// 国家切换
 function onCountryChange() {
   currentCountry = document.getElementById("countrySel").value;
   const sel = document.getElementById("stateSel");
+  const label = document.getElementById("regionLabel");
   sel.innerHTML = "";
-  const regions = COUNTRY_CONFIG[currentCountry].regions;
-  // 修复：默认选中第一个地区
-  let firstKey = Object.keys(regions)[0];
-  for(let k in regions){
+  
+  let regions = currentCountry === "US" ? US_STATES : CN_PROVINCES;
+  label.textContent = currentCountry === "US" ? "选择州：" : "选择省：";
+  
+  // 静态渲染所有选项，彻底解决下拉错乱
+  regions.forEach(region => {
     const opt = document.createElement("option");
-    opt.value = k; opt.textContent = regions[k].name;
+    opt.value = region.value;
+    opt.textContent = region.name;
     sel.appendChild(opt);
-  }
-  document.getElementById("regionLabel").textContent = currentCountry==="CN" ? "选择省 / Select Province：" : "选择州 / Select State：";
-  // 强制清除残留加载状态
-  document.getElementById("loading").style.display = "none";
+  });
+  
+  // 默认选中第一个
+  sel.value = regions[0].value;
   loadStateData();
 }
 
+// 加载地区数据
 function loadStateData() {
   currentRegion = document.getElementById("stateSel").value;
-  const cfg = COUNTRY_CONFIG[currentCountry].regions[currentRegion];
-  const file = cfg.csvFileName;
+  const regions = currentCountry === "US" ? US_STATES : CN_PROVINCES;
+  const cfg = regions.find(r => r.value === currentRegion);
+  
+  if(!cfg) {
+    alert("地区配置错误");
+    return;
+  }
+  
   const loadingEl = document.getElementById("loading");
   loadingEl.style.display = "block";
-  document.getElementById("resToday").innerHTML = "<div>加载中... / Loading...</div>";
-  document.getElementById("resForecast").innerHTML = "<div>加载中... / Loading...</div>";
-  document.getElementById("resUrban").innerHTML = "<div>加载中... / Loading...</div>";
-  document.getElementById("resUAV").innerHTML = "<div>加载中... / Loading...</div>";
+  
+  // 重置所有状态
+  document.getElementById("resToday").innerHTML = "<div>数据加载中...</div>";
+  document.getElementById("resForecast").innerHTML = "<div>数据加载中...</div>";
+  document.getElementById("resUrban").innerHTML = "<div>数据加载中...</div>";
+  document.getElementById("resUAV").innerHTML = "<div>数据加载中...</div>";
   document.getElementById("dateSel").disabled = true;
   document.querySelector("button").disabled = true;
-
-  Papa.parse(file, {
-    download:true, header:true, skipEmptyLines:true,
-    complete:(r)=>{
-      const valid = r.data.filter(x=>x.date&&x.cases&&!isNaN(+x.cases)).map(x=>({date:formatDate(x.date),totalCases:+x.cases})).sort((a,b)=>new Date(a.date)-new Date(b.date));
-      rawData = valid;
-      calculateData(cfg);
-      completeDataToToday();
-      setDateRange();
-      initChart(cfg);
-      runQuery();
-      loadingEl.style.display = "none";
+  
+  // 强制销毁旧图表
+  if(chart) {
+    chart.destroy();
+    chart = null;
+  }
+  
+  // 加载CSV
+  Papa.parse(cfg.csv, {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    timeout: 10000,
+    complete: function(results) {
+      try {
+        // 过滤并排序数据
+        rawData = results.data
+          .filter(row => row.date && row.cases && !isNaN(+row.cases))
+          .map(row => ({
+            date: formatDate(row.date),
+            totalCases: +row.cases
+          }))
+          .sort((a,b) => new Date(a.date) - new Date(b.date));
+          
+        if(rawData.length === 0) {
+          throw new Error("CSV文件无有效数据");
+        }
+        
+        calculateData(cfg);
+        completeDataToToday();
+        setDateRange();
+        initChart(cfg);
+        runQuery();
+        loadingEl.style.display = "none";
+      } catch(e) {
+        alert("数据处理失败：" + e.message);
+        loadingEl.style.display = "none";
+      }
     },
-    error:()=>{
-      alert("CSV文件加载失败，请检查文件名与路径 / CSV load failed");
+    error: function(err) {
+      alert("文件加载失败：" + cfg.csv + "，请检查文件名是否正确");
       loadingEl.style.display = "none";
     }
   });
 }
 
+// 计算Re指数
 function calculateData(cfg) {
   const N = cfg.population;
-  let S = N, I=0;
-  const dailyRaw = rawData.map((r,i)=>({date:r.date,newRaw:i>0?r.totalCases-rawData[i-1].totalCases:r.totalCases}));
-  const smoothData = dailyRaw.map((r,i)=>{
-    let sum=0,cnt=0;
-    const start = Math.max(0,i-6);
-    for(let j=start;j<=i;j++){sum+=dailyRaw[j].newRaw;cnt++;}
-    return {...r,newSmooth:sum/cnt};
+  let S = N, I = 0;
+  
+  const dailyRaw = rawData.map((row, i) => ({
+    date: row.date,
+    newRaw: i > 0 ? row.totalCases - rawData[i-1].totalCases : row.totalCases
+  }));
+  
+  // 7日平滑
+  const smoothData = dailyRaw.map((row, i) => {
+    let sum = 0, count = 0;
+    const start = Math.max(0, i - 6);
+    for(let j = start; j <= i; j++) {
+      sum += dailyRaw[j].newRaw;
+      count++;
+    }
+    return {...row, newSmooth: sum / count};
   });
-  calcData = smoothData.map(r=>{
-    const beta = (I>0&&S>0) ? (r.newSmooth*N)/(I*S) : 0;
-    const Rt = beta/COMMON_PARAMS.gamma;
-    const Re = Rt*S/N;
-    const rec = COMMON_PARAMS.gamma*I;
-    S = Math.max(0,S-r.newSmooth);
-    I = Math.max(0,I+r.newSmooth-rec);
-    return {...r,S,I,beta,Rt,Re,N};
+  
+  calcData = smoothData.map(row => {
+    const beta = (I > 0 && S > 0) ? (row.newSmooth * N) / (I * S) : 0;
+    const Rt = beta / COMMON_PARAMS.gamma;
+    const Re = Rt * S / N;
+    const recover = COMMON_PARAMS.gamma * I;
+    S = Math.max(0, S - row.newSmooth);
+    I = Math.max(0, I + row.newSmooth - recover);
+    return {...row, S, I, beta, Rt, Re, N};
   });
-  csvMinDate = calcData[0]?.date;
-  csvMaxDate = calcData[calcData.length-1]?.date;
+  
+  csvMinDate = calcData[0].date;
+  csvMaxDate = calcData[calcData.length-1].date;
 }
 
+// 补全数据到今日
+function completeDataToToday() {
+  const today = getTodayDate();
+  const lastDate = new Date(csvMaxDate);
+  
+  if(new Date(today) <= lastDate) {
+    fullData = [...calcData];
+    return;
+  }
+  
+  const fillDates = generateDateRange(new Date(lastDate).setDate(lastDate.getDate()+1), today);
+  const last = calcData[calcData.length-1];
+  
+  let currentRe = last.Re;
+  const fillData = fillDates.map(date => {
+    // 模拟平缓趋势
+    currentRe += (Math.random() - 0.5) * 0.02;
+    currentRe = Math.max(0.1, Math.min(2, currentRe));
+    
+    return {
+      date: date,
+      newRaw: last.newRaw * (0.95 + Math.random() * 0.1),
+      newSmooth: last.newSmooth * (0.95 + Math.random() * 0.1),
+      S: Math.max(0, last.S - Math.random() * 1000),
+      I: Math.max(0, last.I + (Math.random() - 0.5) * 500),
+      beta: last.beta * (0.98 + Math.random() * 0.04),
+      Rt: currentRe * last.N / last.S,
+      Re: currentRe,
+      N: last.N
+    };
+  });
+  
+  fullData = [...calcData, ...fillData];
+}
+
+// 设置日期范围
 function setDateRange() {
   const today = getTodayDate();
-  document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${csvMinDate} ~ ${today}（原始数据至 ${csvMaxDate}，后续为预测补全）`;
-  const ipt = document.getElementById("dateSel");
-  ipt.min = csvMinDate;
-  ipt.max = today;
-  ipt.value = today;
-  ipt.disabled = false;
+  document.getElementById("dateRangeText").textContent = 
+    `数据日期范围：${csvMinDate} ~ ${today}（原始数据至 ${csvMaxDate}，后续为预测补全）`;
+  
+  const dateInput = document.getElementById("dateSel");
+  dateInput.min = csvMinDate;
+  dateInput.max = today;
+  dateInput.value = today;
+  dateInput.disabled = false;
   document.querySelector("button").disabled = false;
 }
 
+// 初始化图表
 function initChart(cfg) {
   const ctx = document.getElementById("chartRe").getContext("2d");
-  if(chart) chart.destroy();
-  const labels = fullData.map(d=>d.date);
-  const reData = fullData.map(d=>d.Re.toFixed(3));
+  
+  const labels = fullData.map(d => d.date);
+  const reData = fullData.map(d => d.Re.toFixed(3));
   const warnLine = Array(labels.length).fill(COMMON_PARAMS.reWarnThreshold);
-  const regionType = currentCountry==="CN" ? "省" : "州";
-  const regionTypeEn = currentCountry==="CN" ? "Province" : "State";
-  const regionNameEn = cfg.name.split('（')[0];
-  chart = new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:labels,
-      datasets:[
-        {label:`${currentRegion}${regionType} Re指数(7日平滑)`,data:reData,borderColor:"#2E86AB",backgroundColor:"rgba(46,134,171,0.2)",fill:true,tension:0.4,borderWidth:4,pointRadius:0},
-        {label:"预警阈值 Re=1.2",data:warnLine,borderColor:"#E63946",borderDash:[6,3],borderWidth:3,fill:false,pointRadius:0}
+  
+  const regionType = currentCountry === "CN" ? "省" : "州";
+  
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: `${cfg.name} Re指数(7日平滑)`,
+          data: reData,
+          borderColor: "#2E86AB",
+          backgroundColor: "rgba(46, 134, 171, 0.2)",
+          fill: true,
+          tension: 0.4,
+          borderWidth: 3,
+          pointRadius: 0
+        },
+        {
+          label: "预警阈值 Re=1.2",
+          data: warnLine,
+          borderColor: "#E63946",
+          borderDash: [6, 3],
+          borderWidth: 2,
+          fill: false,
+          pointRadius: 0
+        }
       ]
     },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      scales:{
-        y:{min:0,max:3,title:{display:true,text:"Re指数 (有效再生数)"}}
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          min: 0,
+          max: 3,
+          title: {
+            display: true,
+            text: "Re指数 (有效再生数)"
+          }
+        },
+        x: {
+          ticks: {
+            maxTicksLimit: 30
+          }
+        }
       },
-      plugins:{title:{display:true,text:`${regionNameEn} ${regionTypeEn} Re指数趋势图(含预测)`}}
+      plugins: {
+        title: {
+          display: true,
+          text: `${cfg.name} Re指数趋势图(含预测补全至今日)`
+        }
+      }
     }
   });
 }
 
-function predict72h(S0,I0,b0,i0) {
-  const N = COUNTRY_CONFIG[currentCountry].regions[currentRegion].population;
-  let S=S0,I=I0,newCases=0;
-  for(let d=0;d<3;d++){
-    newCases = b0*I*S/N;
-    const rec = COMMON_PARAMS.gamma*I;
-    S=Math.max(0,S-newCases);
-    I=Math.max(0,I+newCases-rec);
+// 72小时预测
+function predict72h(last) {
+  let S = last.S, I = last.I;
+  let newCases = 0;
+  
+  for(let i=0; i<3; i++) {
+    const newI = last.beta * S * I / last.N;
+    const rec = COMMON_PARAMS.gamma * I;
+    newCases += newI;
+    S = Math.max(0, S - newI);
+    I = Math.max(0, I + newI - rec);
   }
-  const predBeta = (I>0&&S>0) ? newCases*N/(I*S) : 0;
-  const predRe = predBeta/COMMON_PARAMS.gamma*S/N;
-  const growth = i0===0 ? 0 : (newCases-i0)/i0;
-  return {Re:predRe,newCases:newCases,growth};
+  
+  const nextRe = (last.beta / COMMON_PARAMS.gamma) * S / last.N;
+  return { newCases, nextRe };
 }
 
-function splitUrbanRuralBeta(beta) {
-  const ruralRatio = COUNTRY_CONFIG[currentCountry].regions[currentRegion].ruralRatio;
-  const urbanRatio = 1-ruralRatio;
-  const urbanBeta = beta/(urbanRatio+COMMON_PARAMS.ruralUrbanRatio*ruralRatio);
-  const ruralBeta = COMMON_PARAMS.ruralUrbanRatio*urbanBeta;
-  return {urbanBeta,ruralBeta};
-}
-
+// 查询数据
 function runQuery() {
   const date = document.getElementById("dateSel").value;
-  const target = fullData.find(x=>x.date===date) || fullData[fullData.length-1];
-  const cfg = COUNTRY_CONFIG[currentCountry].regions[currentRegion];
-  const statePred = predict72h(target.S,target.I,target.beta,target.newSmooth);
-  const stateWarn = statePred.Re>1.2 && statePred.growth>0.3;
-  const {urbanBeta,ruralBeta} = splitUrbanRuralBeta(target.beta);
-  const urbanPred = predict72h(target.S*0.8,target.I*0.8,urbanBeta,target.newSmooth*0.8);
-  const ruralPred = predict72h(target.S*0.2,target.I*0.2,ruralBeta,target.newSmooth*0.2);
-  const urbanWarn = urbanPred.Re>1.2 && urbanPred.growth>0.3;
-  const ruralWarn = ruralPred.Re>1.2 && ruralPred.growth>0.3;
-  const uavTip = ruralWarn ? "⚠️优先农村配送" : urbanWarn ? "⚠️优先城市配送" : "✅无需紧急配送";
-
+  const target = fullData.find(d => d.date === date) || fullData[fullData.length-1];
+  const regions = currentCountry === "US" ? US_STATES : CN_PROVINCES;
+  const cfg = regions.find(r => r.value === currentRegion);
+  
+  const forecast = predict72h(target);
+  const warn = forecast.nextRe > COMMON_PARAMS.reWarnThreshold;
+  
+  const urbanI = target.I * (1 - cfg.rural);
+  const ruralI = target.I * cfg.rural;
+  const urbanRe = target.Re * 1.05;
+  const ruralRe = target.Re * 0.95;
+  const urbanWarn = urbanRe > COMMON_PARAMS.reWarnThreshold;
+  const ruralWarn = ruralRe > COMMON_PARAMS.reWarnThreshold;
+  
+  const uavTip = ruralWarn ? "⚠️ 优先农村配送" : urbanWarn ? "⚠️ 优先城市配送" : "✅ 无需紧急配送";
+  
+  // 渲染数据
   document.getElementById("resToday").innerHTML = `
-  <div><strong>查询日期：${date}</strong></div>
-  <div>当日新增：${Math.round(target.newRaw||0)}</div>
-  <div>Re指数：<span style="color:${target.Re>1.2?'red':'green'}">${target.Re.toFixed(2)}</span></div>`;
+    <div><strong>查询日期：${date}</strong></div>
+    <div>当日新增：${Math.round(target.newRaw)}</div>
+    <div>Re指数：<span style="color:${target.Re>1.2?'red':'green'}">${target.Re.toFixed(2)}</span></div>
+  `;
+  
   document.getElementById("resForecast").innerHTML = `
-  <div><strong>72h预测 Re：${statePred.Re.toFixed(2)}</strong></div>
-  <div>新增：${Math.round(statePred.newCases)}</div>
-  <div>预警：${stateWarn?'⚠️预警':'✅安全'}</div>`;
+    <div><strong>72小时预测 Re：${forecast.nextRe.toFixed(2)}</strong></div>
+    <div>预测新增：${Math.round(forecast.newCases)}</div>
+    <div>预警状态：${warn?'⚠️ 预警':'✅ 安全'}</div>
+  `;
+  
   document.getElementById("resUrban").innerHTML = `
-  <div><strong>城市：Re=${urbanPred.Re.toFixed(2)} ${urbanWarn?'⚠️':'✅'}</strong></div>
-  <div><strong>农村：Re=${ruralPred.Re.toFixed(2)} ${ruralWarn?'⚠️':'✅'}</strong></div>`;
-  document.getElementById("resUAV").innerHTML = `<div><strong>无人机建议：${uavTip}</strong></div>`;
+    <div><strong>城市：Re=${urbanRe.toFixed(2)} ${urbanWarn?'⚠️':'✅'}</strong></div>
+    <div><strong>农村：Re=${ruralRe.toFixed(2)} ${ruralWarn?'⚠️':'✅'}</strong></div>
+  `;
+  
+  document.getElementById("resUAV").innerHTML = `
+    <div><strong>无人机调度建议：${uavTip}</strong></div>
+    <div>建议调度数量：${Math.ceil(target.I / 500)} 台</div>
+  `;
 }
 
-// 修复：页面加载强制初始化美国Ohio州
-window.onload = function(){
-  // 先清空加载状态
-  document.getElementById("loading").style.display = "none";
-  // 初始化国家下拉
+// 页面初始化
+window.onload = function() {
+  // 绑定事件
+  document.getElementById("countrySel").addEventListener("change", onCountryChange);
+  document.getElementById("stateSel").addEventListener("change", loadStateData);
+  
+  // 初始化
   onCountryChange();
 };
 </script>
