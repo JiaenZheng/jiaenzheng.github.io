@@ -29,17 +29,14 @@ h3{margin-bottom:12px;color:#303133}
 <body>
 <div class="container">
   <header>
-    <!-- 主标题：中英双语 -->
     <h1>RM‑SIR 美国50州疫情指数监测与无人机干预调度系统 / RM‑SIR US 50 States Epidemic Monitoring & UAV Dispatch System</h1>
-    <!-- 副标题：动态双语日期范围 -->
-    <p id="dateRangeText">数据日期范围 Data Range：加载中... Loading...</p>
+    <p id="dateRangeText">数据日期范围 Data Range：加载中...</p>
   </header>
 
   <div class="card">
     <div class="form">
       <label>选择州 / Select State：</label>
       <select id="stateSel" onchange="loadStateData()">
-        <option value="Ohio" selected>Ohio（俄亥俄州）</option>
         <option value="Alabama">Alabama（阿拉巴马州）</option>
         <option value="Alaska">Alaska（阿拉斯加州）</option>
         <option value="Arizona">Arizona（亚利桑那州）</option>
@@ -75,6 +72,7 @@ h3{margin-bottom:12px;color:#303133}
         <option value="NewYork">New York（纽约州）</option>
         <option value="NorthCarolina">North Carolina（北卡罗来纳州）</option>
         <option value="NorthDakota">North Dakota（北达科他州）</option>
+        <option value="Ohio" selected>Ohio（俄亥俄州）</option>
         <option value="Oklahoma">Oklahoma（俄克拉荷马州）</option>
         <option value="Oregon">Oregon（俄勒冈州）</option>
         <option value="Pennsylvania">Pennsylvania（宾夕法尼亚州）</option>
@@ -118,7 +116,7 @@ const STATE_CONFIG = {
   Colorado: { population:5893634, csvBaseName:"colorado_data", ruralRatio:0.32 },
   Connecticut: { population:3605944, csvBaseName:"connecticut_data", ruralRatio:0.18 },
   Delaware: { population:1003384, csvBaseName:"delaware_data", ruralRatio:0.22 },
-  DistrictOfColumbia: { population:712816, csvBaseName:"dc_data", ruralRatio:0 },
+  DistrictOfColumbia: { population:712816, csvBaseName:"districtofcolumbia_data", ruralRatio:0 },
   Florida: { population:21538187, csvBaseName:"florida_data", ruralRatio:0.14 },
   Georgia: { population:10711908, csvBaseName:"georgia_data", ruralRatio:0.24 },
   Hawaii: { population:1455271, csvBaseName:"hawaii_data", ruralRatio:0.21 },
@@ -171,7 +169,7 @@ function formatDate(d) {
   const y = date.getFullYear();
   const m = String(date.getMonth()+1).padStart(2,'0');
   const day = String(date.getDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
+  return `${y}-${day}`;
 }
 
 function getPaths(bn) {
@@ -180,7 +178,7 @@ function getPaths(bn) {
 
 function tryLoad(paths, idx=0) {
   if(idx >= paths.length) {
-    alert(`${currentState} 无有效数据 / No valid data，自动切回Ohio州`);
+    alert(`${currentState} 无有效数据 / No valid data，自动切回Ohio`);
     document.getElementById("stateSel").value = "Ohio";
     loadStateData();
     return;
@@ -191,17 +189,14 @@ function tryLoad(paths, idx=0) {
     skipEmptyLines:true,
     complete:r=>{
       const validData = r.data.filter(x=>x.date&&x.cases&&!isNaN(+x.cases))
-                              .map(x=>({date:formatDate(x.date), totalCases:+x.cases}))
-                              .sort((a,b)=>new Date(a.date)-new Date(b.date));
-      
+        .map(x=>({date:formatDate(x.date), totalCases:+x.cases}))
+        .sort((a,b)=>new Date(a.date)-new Date(b.date));
       if(validData.length===0) return tryLoad(paths, idx+1);
-      
       rawData = validData;
       calculateData();
       setDateRange();
       initChart();
       runQuery();
-      
       document.getElementById("loading").style.display="none";
       document.getElementById("resultContainer").style.display="grid";
     },
@@ -216,7 +211,7 @@ function loadStateData() {
   document.getElementById("dateSel").value="";
   document.getElementById("dateSel").disabled=true;
   document.querySelector("button").disabled=true;
-  document.getElementById("dateRangeText").textContent = "数据日期范围 Data Range：加载中... Loading...";
+  document.getElementById("dateRangeText").textContent = "数据日期范围 Data Range：加载中...";
   tryLoad(getPaths(STATE_CONFIG[currentState].csvBaseName));
 }
 
@@ -227,7 +222,7 @@ function calculateData() {
     date:r.date,
     newRaw: Math.max(0, i>0 ? r.totalCases-rawData[i-1].totalCases : r.totalCases)
   }));
-  const smoothData = dailyRaw.map((r,i)=>{
+  const smoothData = daily.map((r,i)=>{
     let sum=0, count=0;
     const start=Math.max(0,i-6);
     for(let j=start;j<=i;j++){sum+=dailyRaw[j].newRaw;count++;}
@@ -265,18 +260,18 @@ function initChart() {
     data:{
       labels:calcData.map(x=>x.date),
       datasets:[{
-        label:`${currentState} 州 Re指数 / ${currentState} State Re Index`, 
+        label:`${currentState} 州 Re指数 / ${currentState} State Re Index`,
         data:calcData.map(x=>x.Re.toFixed(2)),
-        borderColor:"#165DFF", 
-        backgroundColor:"rgba(22,93,255,0.1)", 
-        fill:true, 
-        tension:0.3, 
+        borderColor:"#165DFF",
+        backgroundColor:"rgba(22,93,255,0.1)",
+        fill:true,
+        tension:0.3,
         borderWidth:2
       }]
     },
     options:{
-      responsive:true, 
-      maintainAspectRatio:false, 
+      responsive:true,
+      maintainAspectRatio:false,
       scales:{
         y:{min:0,max:3, title:{display:true, text:"Re指数 / Re Index"}},
         x:{ticks:{maxRotation:45, autoSkip:true, maxTicksLimit:30}, title:{display:true, text:"日期 / Date"}}
@@ -296,8 +291,8 @@ function predict72h(S0,I0,b0,i0) {
   }
   const predBeta = (I>0&&S>0) ? predNew*N/(I*S) :0;
   const predRe = predBeta/COMMON_PARAMS.gamma * S/N;
-  const growthRate = i0===0?0:(predNew-i0)/i0;
-  return {Re:predRe, newCases:predNew, growth:growthRate};
+  const growth = i0===0?0:(predNew-i0)/i0;
+  return {Re:predRe, newCases:predNew, growth};
 }
 
 function splitUrbanRuralBeta(totalBeta) {
@@ -310,45 +305,30 @@ function splitUrbanRuralBeta(totalBeta) {
 
 function runQuery() {
   const targetDate = document.getElementById("dateSel").value;
-  const targetData = calcData.find(x=>x.date===targetDate);
-  if(!targetData) return alert("所选日期无数据 / No data for selected date，请重新选择");
-  
-  const statePred = predict72h(targetData.S, targetData.I, targetData.beta, targetData.newSmooth);
+  const target = calcData.find(x=>x.date===targetDate);
+  if(!target) return alert("所选日期无数据 / No data for selected date");
+
+  const statePred = predict72h(target.S, target.I, target.beta, target.newSmooth);
   const stateWarn = statePred.Re>1.2 && statePred.growth>0.3;
-  const {urbanBeta, ruralBeta, urbanRatio, ruralRatio} = splitUrbanRuralBeta(targetData.beta);
-  const urbanPred = predict72h(targetData.S*urbanRatio, targetData.I*urbanRatio, urbanBeta, targetData.newSmooth*urbanRatio);
-  const ruralPred = predict72h(targetData.S*ruralRatio, targetData.I*ruralRatio, ruralBeta, targetData.newSmooth*ruralRatio);
+  const {urbanBeta, ruralBeta, urbanRatio, ruralRatio} = splitUrbanRuralBeta(target.beta);
+  const urbanPred = predict72h(target.S*urbanRatio, target.I*urbanRatio, urbanBeta, target.newSmooth*urbanRatio);
+  const ruralPred = predict72h(target.S*ruralRatio, target.I*ruralRatio, ruralBeta, target.newSmooth*ruralRatio);
   const urbanWarn = urbanPred.Re>1.2 && urbanPred.growth>0.3;
   const ruralWarn = ruralPred.Re>1.2 && ruralPred.growth>0.3;
-  
-  const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）/ Prioritize Rural Delivery":urbanWarn?"⚠️ 优先城市配送（高风险）/ Prioritize Urban Delivery":"✅ 无需紧急配送（风险可控）/ No Urgent Delivery";
 
-  // 全部卡片内容 中英双语
+  const uavTip = ruralWarn?"⚠️ 优先农村配送 / Prioritize Rural":urbanWarn?"⚠️ 优先城市配送 / Prioritize Urban":"✅ 无需紧急配送 / No Urgent";
+
   document.getElementById("resToday").innerHTML=
-  `<div class="item">
-    <div><strong>日期 Date</strong>：${targetData.date}</div>
-    <div><strong>当日新增（原始）Raw New</strong>：${Math.round(targetData.newRaw)}</div>
-    <div><strong>当前Re指数 Current Re</strong>：<span style="color:${targetData.Re>1.2?'#F53F3F':'#00B42A'}">${targetData.Re.toFixed(2)}</span></div>
-  </div>`;
+  `<div class="item"><div><strong>日期 Date</strong>：${target.date}</div><div><strong>当日新增 Raw New</strong>：${Math.round(target.newRaw)}</div><div><strong>Re指数 Re</strong>：${target.Re.toFixed(2)}</div></div>`;
 
   document.getElementById("resForecast").innerHTML=
-  `<div class="item">
-    <div><strong>72小时预测Re指数 72h Predicted Re</strong>：${statePred.Re.toFixed(2)}</div>
-    <div><strong>72小时新增预测 72h New Cases</strong>：${Math.round(statePred.newCases)}</div>
-    <div><strong>72小时增速 72h Growth</strong>：${(statePred.growth*100).toFixed(1)}%</div>
-    <div><strong>预警状态 Warning</strong>：<span style="color:${stateWarn?'#F53F3F':'#00B42A'}">${stateWarn?"⚠️ 触发预警 Warning":"✅ 未触发预警 Safe"}</span></div>
-  </div>`;
+  `<div class="item"><div><strong>72h预测Re</strong>：${statePred.Re.toFixed(2)}</div><div><strong>72h新增</strong>：${Math.round(statePred.newCases)}</div><div><strong>增速</strong>：${(state.growth*100).toFixed(1)}%</div><div><strong>预警</strong>：${stateWarn?"⚠️":"✅"}</div></div>`;
 
   document.getElementById("resUrban").innerHTML=
-  `<div class="item">
-    <div><strong>城市 Urban</strong>：Re=${urbanPred.Re.toFixed(2)} | 增速 Growth=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?"⚠️":"✅"}</div>
-    <div><strong>农村 Rural</strong>：Re=${ruralPred.Re.toFixed(2)} | 增速 Growth=${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?"⚠️":"✅"}</div>
-  </div>`;
+  `<div class="item"><div>城市 Re:${urbanPred.Re.toFixed(2)} ${urbanWarn?"⚠️":"✅"}</div><div>农村 Re:${ruralPred.Re.toFixed(2)} ${ruralWarn?"⚠️":"✅"}</div></div>`;
 
   document.getElementById("resUAV").innerHTML=
-  `<div class="item">
-    <div><strong>无人机调度建议 UAV Suggestion</strong>：<span style="color:${uavTip.includes('⚠️')?'#F53F3F':'#00B42A'}">${uavTip}</span></div>
-  </div>`;
+  `<div class="item"><div><strong>调度建议</strong>：${uavTip}</div></div>`;
 }
 
 window.onload=()=>loadStateData();
