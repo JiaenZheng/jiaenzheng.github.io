@@ -156,9 +156,9 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
 </div>
 
 <script>
-console.log("=== 版本校验：2026-05-18 论文公式修正版 ===");
+console.log("=== 版本校验：2026-05-18 预警标红版 ===");
 console.log("如果看到这行，说明你加载到了最新版本！");
-console.log("已按照论文公式(6)修正了72小时预测和增长率计算！");
+console.log("已按照论文公式(6)修正了72小时预测和增长率计算，预警指标自动标红！");
 
 const US_STATES = [
   {value:"Ohio", name:"Ohio（俄亥俄州）", population:11700000, csv:"ohio_data.csv", rural:0.2},
@@ -539,11 +539,21 @@ function runQuery() {
   const statePred = predict72h(target);
   const stateWarn = statePred.nextRe > COMMON_PARAMS.reWarnThreshold && statePred.growth > COMMON_PARAMS.growthWarnThreshold;
   
+  // 预警标红的样式
+  const reColor = statePred.nextRe > COMMON_PARAMS.reWarnThreshold ? 'red' : 'inherit';
+  const growthColor = statePred.growth > COMMON_PARAMS.growthWarnThreshold ? 'red' : 'inherit';
+  
   const {urbanBeta, ruralBeta} = splitUrbanRuralBeta(target.beta, cfg.rural);
   const urbanPred = predict72h({S:target.S*0.8, I:target.I*0.8, beta:urbanBeta, newSmooth:target.newSmooth*0.8, N:target.N*0.8});
   const ruralPred = predict72h({S:target.S*0.2, I:target.I*0.2, beta:ruralBeta, newSmooth:target.newSmooth*0.2, N:target.N*0.2});
   const urbanWarn = urbanPred.nextRe > COMMON_PARAMS.reWarnThreshold && urbanPred.growth > COMMON_PARAMS.growthWarnThreshold;
   const ruralWarn = ruralPred.nextRe > COMMON_PARAMS.reWarnThreshold && ruralPred.growth > COMMON_PARAMS.growthWarnThreshold;
+  
+  // 城乡的预警标红
+  const urbanReColor = urbanPred.nextRe > COMMON_PARAMS.reWarnThreshold ? 'red' : 'inherit';
+  const urbanGrowthColor = urbanPred.growth > COMMON_PARAMS.growthWarnThreshold ? 'red' : 'inherit';
+  const ruralReColor = ruralPred.nextRe > COMMON_PARAMS.reWarnThreshold ? 'red' : 'inherit';
+  const ruralGrowthColor = ruralPred.growth > COMMON_PARAMS.growthWarnThreshold ? 'red' : 'inherit';
   
   const uavTip = ruralWarn ? "⚠️ 优先农村配送 / Priority Rural Dispatch" : 
                  urbanWarn ? "⚠️ 优先城市配送 / Priority Urban Dispatch" : 
@@ -556,17 +566,17 @@ function runQuery() {
   `;
   
   document.getElementById("resForecast").innerHTML = `
-    <div><strong>72h预测 Re：${statePred.nextRe.toFixed(2)} / 72h Forecast Re: ${statePred.nextRe.toFixed(2)}</strong></div>
+    <div><strong>72h预测 Re：<span style="color:${reColor}">${statePred.nextRe.toFixed(2)}</span> / 72h Forecast Re: <span style="color:${reColor}">${statePred.nextRe.toFixed(2)}</span></strong></div>
     <div>预测新增：${Math.round(statePred.newCases)} / Forecast New Cases: ${Math.round(statePred.newCases)}</div>
-    <div>增长率：${(statePred.growth*100).toFixed(1)}% / Growth: ${(statePred.growth*100).toFixed(1)}%</div>
+    <div>增长率：<span style="color:${growthColor}">${(statePred.growth*100).toFixed(1)}%</span> / Growth: <span style="color:${growthColor}">${(statePred.growth*100).toFixed(1)}%</span></div>
     <div>预警状态：${stateWarn?'⚠️ 预警 / Warning':'✅ 安全 / Safe'}</div>
   `;
   
   document.getElementById("resUrban").innerHTML = `
-    <div><strong>城市 72h预测：Re=${urbanPred.nextRe.toFixed(2)} 增长率=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</strong></div>
-    <div>Urban 72h Forecast: Re=${urbanPred.nextRe.toFixed(2)} Growth=${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</div>
-    <div><strong>农村 72h预测：Re=${ruralPred.nextRe.toFixed(2)} 增长率=${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?'⚠️':'✅'}</strong></div>
-    <div>Rural 72h Forecast: Re=${ruralPred.nextRe.toFixed(2)} Growth=${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?'⚠️':'✅'}</div>
+    <div><strong>城市 72h预测：Re=<span style="color:${urbanReColor}">${urbanPred.nextRe.toFixed(2)}</span> 增长率=<span style="color:${urbanGrowthColor}">${(urbanPred.growth*100).toFixed(1)}%</span> ${urbanWarn?'⚠️':'✅'}</strong></div>
+    <div>Urban 72h Forecast: Re=<span style="color:${urbanReColor}">${urbanPred.nextRe.toFixed(2)}</span> Growth=<span style="color:${urbanGrowthColor}">${(urbanPred.growth*100).toFixed(1)}%</span> ${urbanWarn?'⚠️':'✅'}</div>
+    <div><strong>农村 72h预测：Re=<span style="color:${ruralReColor}">${ruralPred.nextRe.toFixed(2)}</span> 增长率=<span style="color:${ruralGrowthColor}">${(ruralPred.growth*100).toFixed(1)}%</span> ${ruralWarn?'⚠️':'✅'}</strong></div>
+    <div>Rural 72h Forecast: Re=<span style="color:${ruralReColor}">${ruralPred.nextRe.toFixed(2)}</span> Growth=<span style="color:${ruralGrowthColor}">${(ruralPred.growth*100).toFixed(1)}%</span> ${ruralWarn?'⚠️':'✅'}</div>
   `;
   
   document.getElementById("resUAV").innerHTML = `
