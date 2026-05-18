@@ -16,7 +16,7 @@ header p{opacity:0.9;font-size:14px}
 .card{background:#fff;padding:20px;border-radius:16px;margin-bottom:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
 .form{display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 select,input[type="date"]{padding:10px 14px;border:1px solid #dcdfe6;border-radius:8px;font-size:14px;min-width:200px}
-button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor-pointer;font-size:14px}
+button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
 .full{grid-column:1 / -1}
 .item{padding:14px;background:#f5f7fa;border-radius:10px;margin:10px 0}
@@ -164,8 +164,11 @@ const COMMON_PARAMS = { gamma:0.2, smoothWindow:7, reWarnThreshold:1.2, growthWa
 let currentState = "Ohio", rawData = [], calcData = [], chart = null;
 let csvMinDate = "", csvMaxDate = "";
 
+// 修复：统一日期格式化，避免时区问题
 function formatDate(d) {
-  const date = new Date(d.replace(/\//g, '-'));
+  if (!d) return "";
+  const date = new Date(d);
+  // 强制转本地日期，避免UTC偏移
   const y = date.getFullYear();
   const m = String(date.getMonth()+1).padStart(2,'0');
   const day = String(date.getDate()).padStart(2,'0');
@@ -238,18 +241,24 @@ function calculateData() {
   });
 }
 
+// 修复：获取本地今天的日期，避免UTC时区差
+function getTodayDate() {
+  const today = new Date();
+  // 强制取本地日期，不转UTC
+  return `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+}
+
 function setDateRange() {
   csvMinDate = calcData[0].date;
   csvMaxDate = calcData[calcData.length-1].date;
 
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const todayStr = getTodayDate(); // 改用修复后的本地日期
 
   document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${csvMinDate} ~ ${csvMaxDate}（可查询至今天 ${todayStr}）`;
   const dateInput = document.getElementById("dateSel");
   dateInput.min = csvMinDate;
   dateInput.max = todayStr;
-  dateInput.value = csvMaxDate;
+  dateInput.value = todayStr; // 默认选中今天
   dateInput.disabled = false;
   document.querySelector("button").disabled = false;
 }
@@ -313,10 +322,11 @@ function getDateMinus5Years(dateStr) {
 
 function runQuery() {
   const inputDate = document.getElementById("dateSel").value;
-  const today = new Date();
-  today.setHours(0,0,0,0);
+  const todayStr = getTodayDate(); // 本地今天
   const input = new Date(inputDate);
+  const today = new Date(todayStr);
 
+  // 修复：只禁止 超过今天 的日期，等于今天允许
   if (input > today) {
     alert("不能选择未来日期 / Cannot select future date");
     return;
@@ -325,6 +335,7 @@ function runQuery() {
   let targetDate = inputDate;
   let tip = "";
 
+  // 输入日期在CSV之后 → 推5年
   if (input > new Date(csvMaxDate)) {
     targetDate = getDateMinus5Years(inputDate);
     tip = `<div style="color:#888;font-size:12px">（已自动使用 5 年前同期数据：${targetDate}）</div>`;
@@ -332,7 +343,7 @@ function runQuery() {
 
   const target = calcData.find(x => x.date === targetDate);
   if (!target) {
-    alert("该日期无数据 / No data on this date");
+    alert(`该日期(${targetDate})无数据 / No data on this date`);
     return;
   }
 
