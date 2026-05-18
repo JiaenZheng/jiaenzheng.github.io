@@ -103,12 +103,15 @@ button:disabled {
   margin: 10px 0;
   min-height: 80px; /* 避免内容为空时塌陷 */
 }
+/* 关键修改：item下所有div默认粗体，保持样式统一 */
 .item div {
   font-size: 15px;
   line-height: 1.8;
+  font-weight: bold; /* 新增：默认粗体 */
 }
 .item strong {
   font-size: 16px;
+  font-weight: bold; /* 强化粗体，确保一致性 */
 }
 /* 加载状态 */
 .loading {
@@ -778,6 +781,7 @@ function runQuery() {
       <div><strong>预警 / Warning</strong>：${stateWarn ? '⚠️ 预警 / Warning' : '✅ 安全 / Safe'}</div>
     </div>`;
 
+    // 关键修改：保持原有结构，通过CSS统一粗体，也可手动加<strong>强化
     document.getElementById("resUrban").innerHTML = `
     <div class="item">
       <div>城市 Urban：Re=${urbanPred.Re.toFixed(2)} 增速 Growth ${(urbanPred.growth * 100).toFixed(1)}% ${urbanWarn ? '⚠️' : '✅'}</div>
