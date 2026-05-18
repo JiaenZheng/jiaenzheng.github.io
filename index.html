@@ -21,13 +21,17 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
 .full{grid-column:1 / -1}
 .item{padding:14px;background:#f5f7fa;border-radius:10px;margin:10px 0}
 .item div{margin:4px 0}
+.chart-box{width:100%;height:400px;padding-top:10px}
+h3{margin-bottom:12px;color:#303133}
 .loading{text-align:center;padding:20px;color:#666}
 </style>
 </head>
 <body>
 <div class="container">
   <header>
+    <!-- 主标题：中英双语 -->
     <h1>RM‑SIR 美国50州疫情指数监测与无人机干预调度系统 / RM‑SIR US 50 States Epidemic Monitoring & UAV Dispatch System</h1>
+    <!-- 副标题：动态双语日期范围 -->
     <p id="dateRangeText">数据日期范围 Data Range：加载中... Loading...</p>
   </header>
 
@@ -35,6 +39,7 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
     <div class="form">
       <label>选择州 / Select State：</label>
       <select id="stateSel" onchange="loadStateData()">
+        <option value="Ohio" selected>Ohio（俄亥俄州）</option>
         <option value="Alabama">Alabama（阿拉巴马州）</option>
         <option value="Alaska">Alaska（阿拉斯加州）</option>
         <option value="Arizona">Arizona（亚利桑那州）</option>
@@ -70,7 +75,6 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
         <option value="NewYork">New York（纽约州）</option>
         <option value="NorthCarolina">North Carolina（北卡罗来纳州）</option>
         <option value="NorthDakota">North Dakota（北达科他州）</option>
-        <option value="Ohio" selected>Ohio（俄亥俄州）</option>
         <option value="Oklahoma">Oklahoma（俄克拉荷马州）</option>
         <option value="Oregon">Oregon（俄勒冈州）</option>
         <option value="Pennsylvania">Pennsylvania（宾夕法尼亚州）</option>
@@ -104,64 +108,58 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
 </div>
 
 <script>
-// 恢复旧逻辑：单单词州 = 小写 + 首字母大写双尝试；多单词/DC = 精准匹配
 const STATE_CONFIG = {
-  // 单单词州：旧逻辑（双尝试）
-  Ohio: { population:11700000, csvBase:"ohio_data", ruralRatio:0.2 },
-  Alabama: { population:5024279, csvBase:"alabama_data", ruralRatio:0.35 },
-  Alaska: { population:733583, csvBase:"alaska_data", ruralRatio:0.65 },
-  Arizona: { population:7379654, csvBase:"arizona_data", ruralRatio:0.28 },
-  Arkansas: { population:3045637, csvBase:"arkansas_data", ruralRatio:0.48 },
-  California: { population:39538223, csvBase:"california_data", ruralRatio:0.15 },
-  Colorado: { population:5893634, csvBase:"colorado_data", ruralRatio:0.32 },
-  Connecticut: { population:3605944, csvBase:"connecticut_data", ruralRatio:0.18 },
-  Delaware: { population:1003384, csvBase:"delaware_data", ruralRatio:0.22 },
-  Florida: { population:21538187, csvBase:"florida_data", ruralRatio:0.14 },
-  Georgia: { population:10711908, csvBase:"georgia_data", ruralRatio:0.24 },
-  Hawaii: { population:1455271, csvBase:"hawaii_data", ruralRatio:0.21 },
-  Idaho: { population:1900923, csvBase:"idaho_data", ruralRatio:0.58 },
-  Illinois: { population:12812508, csvBase:"illinois_data", ruralRatio:0.19 },
-  Indiana: { population:6833037, csvBase:"indiana_data", ruralRatio:0.31 },
-  Iowa: { population:3190369, csvBase:"iowa_data", ruralRatio:0.52 },
-  Kansas: { population:2937150, csvBase:"kansas_data", ruralRatio:0.45 },
-  Kentucky: { population:4509342, csvBase:"kentucky_data", ruralRatio:0.41 },
-  Louisiana: { population:4657757, csvBase:"louisiana_data", ruralRatio:0.34 },
-  Maine: { population:1372247, csvBase:"maine_data", ruralRatio:0.61 },
-  Maryland: { population:6177224, csvBase:"maryland_data", ruralRatio:0.17 },
-  Massachusetts: { population:7029917, csvBase:"massachusetts_data", ruralRatio:0.13 },
-  Michigan: { population:10077331, csvBase:"michigan_data", ruralRatio:0.29 },
-  Minnesota: { population:5707390, csvBase:"minnesota_data", ruralRatio:0.40 },
-  Mississippi: { population:2966407, csvBase:"mississippi_data", ruralRatio:0.49 },
-  Missouri: { population:6169270, csvBase:"missouri_data", ruralRatio:0.36 },
-  Montana: { population:1122867, csvBase:"montana_data", ruralRatio:0.69 },
-  Nebraska: { population:1963692, csvBase:"nebraska_data", ruralRatio:0.53 },
-  Nevada: { population:3104614, csvBase:"nevada_data", ruralRatio:0.33 },
-  Oklahoma: { population:3959353, csvBase:"oklahoma_data", ruralRatio:0.43 },
-  Oregon: { population:4237256, csvBase:"oregon_data", ruralRatio:0.39 },
-  Pennsylvania: { population:12801989, csvBase:"pennsylvania_data", ruralRatio:0.21 },
-  Tennessee: { population:6910840, csvBase:"tennessee_data", ruralRatio:0.30 },
-  Texas: { population:29145505, csvBase:"texas_data", ruralRatio:0.18 },
-  Utah: { population:3380800, csvBase:"utah_data", ruralRatio:0.35 },
-  Vermont: { population:643077, csvBase:"vermont_data", ruralRatio:0.56 },
-  Virginia: { population:8631393, csvBase:"virginia_data", ruralRatio:0.23 },
-  Washington: { population:7705281, csvBase:"washington_data", ruralRatio:0.25 },
-  Wisconsin: { population:5893718, csvBase:"wisconsin_data", ruralRatio:0.37 },
-  Wyoming: { population:578803, csvBase:"wyoming_data", ruralRatio:0.72 },
-
-  // 多单词州：精准驼峰（你仓库文件名）
-  NewHampshire: { population:1388992, csvBase:"NewHampshire_data", ruralRatio:0.42 },
-  NewJersey: { population:9288994, csvBase:"NewJersey_data", ruralRatio:0.11 },
-  NewMexico: { population:2117522, csvBase:"NewMexico_data", ruralRatio:0.54 },
-  NewYork: { population:20201249, csvBase:"NewYork_data", ruralRatio:0.12 },
-  NorthCarolina: { population:10439388, csvBase:"NorthCarolina_data", ruralRatio:0.26 },
-  NorthDakota: { population:779261, csvBase:"NorthDakota_data", ruralRatio:0.63 },
-  RhodeIsland: { population:1097379, csvBase:"RhodeIsland_data", ruralRatio:0.20 },
-  SouthCarolina: { population:5210095, csvBase:"SouthCarolina_data", ruralRatio:0.27 },
-  SouthDakota: { population:909824, csvBase:"SouthDakota_data", ruralRatio:0.62 },
-  WestVirginia: { population:1782959, csvBase:"WestVirginia_data", ruralRatio:0.51 },
-
-  // DC：全小写（你仓库文件名）
-  DistrictOfColumbia: { population:712816, csvBase:"districtofcolumbia_data", ruralRatio:0 }
+  Ohio: { population:11700000, csvBaseName:"ohio_data", ruralRatio:0.2 },
+  Alabama: { population:5024279, csvBaseName:"alabama_data", ruralRatio:0.35 },
+  Alaska: { population:733583, csvBaseName:"alaska_data", ruralRatio:0.65 },
+  Arizona: { population:7379654, csvBaseName:"arizona_data", ruralRatio:0.28 },
+  Arkansas: { population:3045637, csvBaseName:"arkansas_data", ruralRatio:0.48 },
+  California: { population:39538223, csvBaseName:"california_data", ruralRatio:0.15 },
+  Colorado: { population:5893634, csvBaseName:"colorado_data", ruralRatio:0.32 },
+  Connecticut: { population:3605944, csvBaseName:"connecticut_data", ruralRatio:0.18 },
+  Delaware: { population:1003384, csvBaseName:"delaware_data", ruralRatio:0.22 },
+  DistrictOfColumbia: { population:712816, csvBaseName:"dc_data", ruralRatio:0 },
+  Florida: { population:21538187, csvBaseName:"florida_data", ruralRatio:0.14 },
+  Georgia: { population:10711908, csvBaseName:"georgia_data", ruralRatio:0.24 },
+  Hawaii: { population:1455271, csvBaseName:"hawaii_data", ruralRatio:0.21 },
+  Idaho: { population:1900923, csvBaseName:"idaho_data", ruralRatio:0.58 },
+  Illinois: { population:12812508, csvBaseName:"illinois_data", ruralRatio:0.19 },
+  Indiana: { population:6833037, csvBaseName:"indiana_data", ruralRatio:0.31 },
+  Iowa: { population:3190369, csvBaseName:"iowa_data", ruralRatio:0.52 },
+  Kansas: { population:2937150, csvBaseName:"kansas_data", ruralRatio:0.45 },
+  Kentucky: { population:4509342, csvBaseName:"kentucky_data", ruralRatio:0.41 },
+  Louisiana: { population:4657757, csvBaseName:"louisiana_data", ruralRatio:0.34 },
+  Maine: { population:1372247, csvBaseName:"maine_data", ruralRatio:0.61 },
+  Maryland: { population:6177224, csvBaseName:"maryland_data", ruralRatio:0.17 },
+  Massachusetts: { population:7029917, csvBaseName:"massachusetts_data", ruralRatio:0.13 },
+  Michigan: { population:10077331, csvBaseName:"michigan_data", ruralRatio:0.29 },
+  Minnesota: { population:5707390, csvBaseName:"minnesota_data", ruralRatio:0.40 },
+  Mississippi: { population:2966407, csvBaseName:"mississippi_data", ruralRatio:0.49 },
+  Missouri: { population:6169270, csvBaseName:"missouri_data", ruralRatio:0.36 },
+  Montana: { population:1122867, csvBaseName:"montana_data", ruralRatio:0.69 },
+  Nebraska: { population:1963692, csvBaseName:"nebraska_data", ruralRatio:0.53 },
+  Nevada: { population:3104614, csvBaseName:"nevada_data", ruralRatio:0.33 },
+  NewHampshire: { population:1388992, csvBaseName:"newhampshire_data", ruralRatio:0.42 },
+  NewJersey: { population:9288994, csvBaseName:"newjersey_data", ruralRatio:0.11 },
+  NewMexico: { population:2117522, csvBaseName:"newmexico_data", ruralRatio:0.54 },
+  NewYork: { population:20201249, csvBaseName:"newyork_data", ruralRatio:0.12 },
+  NorthCarolina: { population:10439388, csvBaseName:"northcarolina_data", ruralRatio:0.26 },
+  NorthDakota: { population:779261, csvBaseName:"northdakota_data", ruralRatio:0.63 },
+  Oklahoma: { population:3959353, csvBaseName:"oklahoma_data", ruralRatio:0.43 },
+  Oregon: { population:4237256, csvBaseName:"oregon_data", ruralRatio:0.39 },
+  Pennsylvania: { population:12801989, csvBaseName:"pennsylvania_data", ruralRatio:0.21 },
+  RhodeIsland: { population:1097379, csvBaseName:"rhodeisland_data", ruralRatio:0.20 },
+  SouthCarolina: { population:5210095, csvBaseName:"southcarolina_data", ruralRatio:0.27 },
+  SouthDakota: { population:909824, csvBaseName:"southdakota_data", ruralRatio:0.62 },
+  Tennessee: { population:6910840, csvBaseName:"tennessee_data", ruralRatio:0.30 },
+  Texas: { population:29145505, csvBaseName:"texas_data", ruralRatio:0.18 },
+  Utah: { population:3380800, csvBaseName:"utah_data", ruralRatio:0.35 },
+  Vermont: { population:643077, csvBaseName:"vermont_data", ruralRatio:0.56 },
+  Virginia: { population:8631393, csvBaseName:"virginia_data", ruralRatio:0.23 },
+  Washington: { population:7705281, csvBaseName:"washington_data", ruralRatio:0.25 },
+  WestVirginia: { population:1782959, csvBaseName:"westvirginia_data", ruralRatio:0.51 },
+  Wisconsin: { population:5893718, csvBaseName:"wisconsin_data", ruralRatio:0.37 },
+  Wyoming: { population:578803, csvBaseName:"wyoming_data", ruralRatio:0.72 }
 };
 
 const COMMON_PARAMS = { gamma:0.2, smoothWindow:7, reWarnThreshold:1.2, growthWarnThreshold:0.3, ruralUrbanRatio:0.77 };
@@ -176,9 +174,8 @@ function formatDate(d) {
   return `${y}-${m}-${day}`;
 }
 
-// 旧逻辑：双尝试（小写/首字母大写）
 function getPaths(bn) {
-  return [`${bn}.csv`, `${bn.charAt(0).toUpperCase() + bn.slice(1)}.csv`];
+  return [`${bn}.csv`, `${bn.charAt(0).toUpperCase()+bn.slice(1)}.csv`, `${bn.toUpperCase()}.csv`];
 }
 
 function tryLoad(paths, idx=0) {
@@ -194,14 +191,17 @@ function tryLoad(paths, idx=0) {
     skipEmptyLines:true,
     complete:r=>{
       const validData = r.data.filter(x=>x.date&&x.cases&&!isNaN(+x.cases))
-        .map(x=>({date:formatDate(x.date), totalCases:+x.cases}))
-        .sort((a,b)=>new Date(a.date)-new Date(b.date));
+                              .map(x=>({date:formatDate(x.date), totalCases:+x.cases}))
+                              .sort((a,b)=>new Date(a.date)-new Date(b.date));
+      
       if(validData.length===0) return tryLoad(paths, idx+1);
+      
       rawData = validData;
       calculateData();
       setDateRange();
       initChart();
       runQuery();
+      
       document.getElementById("loading").style.display="none";
       document.getElementById("resultContainer").style.display="grid";
     },
@@ -217,7 +217,7 @@ function loadStateData() {
   document.getElementById("dateSel").disabled=true;
   document.querySelector("button").disabled=true;
   document.getElementById("dateRangeText").textContent = "数据日期范围 Data Range：加载中... Loading...";
-  tryLoad(getPaths(STATE_CONFIG[currentState].csvBase));
+  tryLoad(getPaths(STATE_CONFIG[currentState].csvBaseName));
 }
 
 function calculateData() {
@@ -265,18 +265,18 @@ function initChart() {
     data:{
       labels:calcData.map(x=>x.date),
       datasets:[{
-        label:`${currentState} 州 Re指数 / ${currentState} State Re Index`,
+        label:`${currentState} 州 Re指数 / ${currentState} State Re Index`, 
         data:calcData.map(x=>x.Re.toFixed(2)),
-        borderColor:"#165DFF",
-        backgroundColor:"rgba(22,93,255,0.1)",
-        fill:true,
-        tension:0.3,
+        borderColor:"#165DFF", 
+        backgroundColor:"rgba(22,93,255,0.1)", 
+        fill:true, 
+        tension:0.3, 
         borderWidth:2
       }]
     },
     options:{
-      responsive:true,
-      maintainAspectRatio:false,
+      responsive:true, 
+      maintainAspectRatio:false, 
       scales:{
         y:{min:0,max:3, title:{display:true, text:"Re指数 / Re Index"}},
         x:{ticks:{maxRotation:45, autoSkip:true, maxTicksLimit:30}, title:{display:true, text:"日期 / Date"}}
@@ -296,8 +296,8 @@ function predict72h(S0,I0,b0,i0) {
   }
   const predBeta = (I>0&&S>0) ? predNew*N/(I*S) :0;
   const predRe = predBeta/COMMON_PARAMS.gamma * S/N;
-  const growth = i0===0?0:(predNew-i0)/i0;
-  return {Re:predRe, newCases:predNew, growth};
+  const growthRate = i0===0?0:(predNew-i0)/i0;
+  return {Re:predRe, newCases:predNew, growth:growthRate};
 }
 
 function splitUrbanRuralBeta(totalBeta) {
@@ -310,24 +310,25 @@ function splitUrbanRuralBeta(totalBeta) {
 
 function runQuery() {
   const targetDate = document.getElementById("dateSel").value;
-  const target = calcData.find(x=>x.date===targetDate);
-  if(!target) return alert("所选日期无数据 / No data for selected date，请重新选择");
-
-  const statePred = predict72h(target.S, target.I, target.beta, target.newSmooth);
+  const targetData = calcData.find(x=>x.date===targetDate);
+  if(!targetData) return alert("所选日期无数据 / No data for selected date，请重新选择");
+  
+  const statePred = predict72h(targetData.S, targetData.I, targetData.beta, targetData.newSmooth);
   const stateWarn = statePred.Re>1.2 && statePred.growth>0.3;
-  const {urbanBeta, ruralBeta, urbanRatio, ruralRatio} = splitUrbanRuralBeta(target.beta);
-  const urbanPred = predict72h(target.S*urbanRatio, target.I*urbanRatio, urbanBeta, target.newSmooth*urbanRatio);
-  const ruralPred = predict72h(target.S*ruralRatio, target.I*ruralRatio, ruralBeta, target.newSmooth*ruralRatio);
+  const {urbanBeta, ruralBeta, urbanRatio, ruralRatio} = splitUrbanRuralBeta(targetData.beta);
+  const urbanPred = predict72h(targetData.S*urbanRatio, targetData.I*urbanRatio, urbanBeta, targetData.newSmooth*urbanRatio);
+  const ruralPred = predict72h(targetData.S*ruralRatio, targetData.I*ruralRatio, ruralBeta, targetData.newSmooth*ruralRatio);
   const urbanWarn = urbanPred.Re>1.2 && urbanPred.growth>0.3;
   const ruralWarn = ruralPred.Re>1.2 && ruralPred.growth>0.3;
-
+  
   const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）/ Prioritize Rural Delivery":urbanWarn?"⚠️ 优先城市配送（高风险）/ Prioritize Urban Delivery":"✅ 无需紧急配送（风险可控）/ No Urgent Delivery";
 
+  // 全部卡片内容 中英双语
   document.getElementById("resToday").innerHTML=
   `<div class="item">
-    <div><strong>日期 Date</strong>：${target.date}</div>
-    <div><strong>当日新增（原始）Raw New</strong>：${Math.round(target.newRaw)}</div>
-    <div><strong>当前Re指数 Current Re</strong>：<span style="color:${target.Re>1.2?'#F53F3F':'#00B42A'}">${target.Re.toFixed(2)}</span></div>
+    <div><strong>日期 Date</strong>：${targetData.date}</div>
+    <div><strong>当日新增（原始）Raw New</strong>：${Math.round(targetData.newRaw)}</div>
+    <div><strong>当前Re指数 Current Re</strong>：<span style="color:${targetData.Re>1.2?'#F53F3F':'#00B42A'}">${targetData.Re.toFixed(2)}</span></div>
   </div>`;
 
   document.getElementById("resForecast").innerHTML=
