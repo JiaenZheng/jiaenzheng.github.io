@@ -58,6 +58,7 @@ const COMMON_PARAMS = { gamma:0.2, reWarnThreshold:1.2 };
 let currentState = "Ohio", rawData = [], calcData = [], chart;
 let csvMinDate, csvMaxDate, todayStr;
 
+// 格式化日期
 function formatDate(d) {
   const dt = new Date(d);
   const y = dt.getFullYear();
@@ -66,121 +67,213 @@ function formatDate(d) {
   return `${y}-${m}-${day}`;
 }
 
+// 获取本地今天日期
 function getTodayDate() {
   const t = new Date();
   return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,0)}-${String(t.getDate()).padStart(2,0)}`;
 }
 
-function getDateMinus5Years(d) {
-  const dt = new Date(d);
-  dt.setFullYear(dt.getFullYear() - 5);
-  return formatDate(dt);
-}
-
-function dateRange(start, end) {
-  const arr = [];
-  let cur = new Date(start);
-  while (cur <= new Date(end)) {
-    arr.push(formatDate(cur));
-    cur.setDate(cur.getDate() + 1);
+// 获取日期范围数组
+function getDateRange(startDate, endDate) {
+  const dates = [];
+  let currentDate = new Date(startDate);
+  const end = new Date(endDate);
+  
+  while (currentDate <= end) {
+    dates.push(formatDate(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
   }
-  return arr;
+  return dates;
 }
 
+// 加载CSV数据
 function loadStateData() {
   todayStr = getTodayDate();
   const file = STATE_CONFIG[currentState].csvFileName;
 
   Papa.parse(file, {
-    download: true, header: true, skipEmptyLines: true,
+    download: true, 
+    header: true, 
+    skipEmptyLines: true,
     complete: res => {
+      // 处理原始数据
       rawData = res.data.filter(x => x.date && x.cases).map(x => ({
         date: formatDate(x.date),
         totalCases: +x.cases
-      })).sort((a,b)=>a.date.localeCompare(b.date));
+      })).sort((a,b)=>new Date(a.date) - new Date(b.date));
 
-      calculateData();
+      // 计算Re指数（仅用CSV内数据）
+      calculateReData();
+      
+      // 获取CSV的起止日期
       csvMinDate = calcData[0].date;
       csvMaxDate = calcData[calcData.length-1].date;
 
-      initFullChart();
+      // 初始化图表（纯图形搬移补齐到今天）
+      initChartWithVisualExtend();
+      
+      // 设置日期选择框
       document.getElementById("dateSel").max = todayStr;
       document.getElementById("dateSel").value = todayStr;
-      document.getElementById("dateRangeText").textContent = `数据范围：${csvMinDate} ~ ${csvMaxDate}，图表已扩展至 ${todayStr}`;
+      document.getElementById("dateRangeText").textContent = `数据范围：${csvMinDate} ~ ${csvMaxDate}，图表视觉延伸至 ${todayStr}`;
       document.getElementById("resultContainer").style.display = "grid";
+      
+      // 默认查询今天
       runQuery();
+    },
+    error: err => {
+      alert("数据加载失败：" + err.message);
     }
   });
 }
 
-function calculateData() {
+// 计算CSV内的Re指数（仅计算，不扩展）
+function calculateReData() {
   const N = STATE_CONFIG[currentState].population;
   let S = N, I = 0;
   calcData = [];
+  
   for (let i=0; i<rawData.length; i++) {
-    const newCases = i===0 ? rawData[i].totalCases : Math.max(0, rawData[i].totalCases - rawData[i-1].totalCases);
-    const beta = I>0 && S>0 ? (newCases * N) / (I*S) : 0;
-    const Re = beta / COMMON_PARAMS.gamma * S / N;
-    calcData.push({ date: rawData[i].date, newRaw: newCases, Re, S, I, beta });
-    S -= newCases;
-    I += newCases;
+    // 计算当日新增
+    const newCases = i === 0 ? rawData[i].totalCases : Math.max(0, rawData[i].totalCases - rawData[i-1].totalCases);
+    
+    // 计算Re指数
+    const beta = (I > 0 && S > 0) ? (newCases * N) / (I * S) : 0;
+    const Re = beta / COMMON_PARAMS.gamma * (S / N);
+    
+    // 保存数据
+    calcData.push({
+      date: rawData[i].date,
+      newRaw: newCases,
+      Re: Re,
+      S: S,
+      I: I,
+      beta: beta
+    });
+    
+    // 更新S/I
+    S = Math.max(0, S - newCases);
+    I = Math.max(0, I + newCases - COMMON_PARAMS.gamma * I);
   }
 }
 
-// ✅ 关键：图表补齐到今天（用5年前数据）
-function initFullChart() {
-  const allDates = dateRange(csvMinDate, todayStr);
-  const map = {};
-  calcData.forEach(x => map[x.date] = x);
+// ✅ 核心：纯视觉搬移补齐图表（不计算新数据）
+function initChartWithVisualExtend() {
+  // 1. 获取完整日期范围（CSV开始 → 今天）
+  const fullDateRange = getDateRange(csvMinDate, todayStr);
+  
+  // 2. 提取CSV内的Re数值（原始曲线）
+  const originalReValues = calcData.map(item => item.Re.toFixed(2));
+  
+  // 3. 构建视觉补齐的Re数据
+  const extendedReValues = [];
+  let csvDataIndex = 0;
+  
+  for (let i = 0; i < fullDateRange.length; i++) {
+    if (i < originalReValues.length) {
+      // CSV范围内：用原始数据
+      extendedReValues.push(originalReValues[i]);
+    } else {
+      // CSV范围外：循环复用原始曲线（纯视觉搬移）
+      csvDataIndex = (csvDataIndex >= originalReValues.length) ? 0 : csvDataIndex;
+      extendedReValues.push(originalReValues[csvDataIndex]);
+      csvDataIndex++;
+    }
+  }
 
-  const fullRe = allDates.map(d => {
-    if (map[d]) return map[d].Re.toFixed(2);
-    const old = getDateMinus5Years(d);
-    return map[old] ? map[old].Re.toFixed(2) : null;
-  }).filter(x => x != null);
-
+  // 4. 绘制图表
   const ctx = document.getElementById("chartRe").getContext("2d");
   if (chart) chart.destroy();
+  
   chart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: allDates,
+      labels: fullDateRange,
       datasets: [{
         label: 'Re 指数趋势',
-        data: fullRe,
+        data: extendedReValues,
         borderColor: '#165DFF',
         backgroundColor: 'rgba(22,93,255,0.1)',
         fill: true,
         tension: 0.4,
-        borderWidth: 2
+        borderWidth: 2,
+        // 区分原始数据和视觉补齐部分（可选）
+        borderDash: fullDateRange.map((date, idx) => {
+          return new Date(date) > new Date(csvMaxDate) ? [5, 3] : [];
+        }),
+        pointBackgroundColor: fullDateRange.map((date) => {
+          return new Date(date) > new Date(csvMaxDate) ? '#FF9500' : '#165DFF';
+        })
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: { y: { min:0, max:3 }, x: { ticks: { maxRotation:45 } } }
+      scales: {
+        y: { 
+          min: 0, 
+          max: 3,
+          title: { display: true, text: 'Re指数' }
+        },
+        x: { 
+          ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 50 },
+          title: { display: true, text: '日期' }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            afterLabel: function(context) {
+              const date = context.label;
+              if (new Date(date) > new Date(csvMaxDate)) {
+                return "（视觉补齐数据）";
+              }
+              return "";
+            }
+          }
+        }
+      }
     }
   });
 }
 
+// 查询逻辑（保留今天可查）
 function runQuery() {
-  const input = document.getElementById("dateSel").value;
-  if (!input) return;
-  if (new Date(input) > new Date(todayStr)) { alert("不能选未来日期"); return; }
-
-  let targetDate = input;
-  if (new Date(input) > new Date(csvMaxDate)) {
-    targetDate = getDateMinus5Years(input);
+  const inputDate = document.getElementById("dateSel").value;
+  if (!inputDate) return;
+  
+  // 禁止未来日期
+  if (new Date(inputDate) > new Date(todayStr)) {
+    alert("不能选择未来日期");
+    return;
   }
 
-  const item = calcData.find(x => x.date === targetDate);
-  if (!item) { alert("无数据"); return; }
+  let targetDate = inputDate;
+  let tip = "";
+  
+  // CSV外的日期 → 取5年前同期数据
+  if (new Date(inputDate) > new Date(csvMaxDate)) {
+    const dateMinus5 = new Date(inputDate);
+    dateMinus5.setFullYear(dateMinus5.getFullYear() - 5);
+    targetDate = formatDate(dateMinus5);
+    tip = `<br><span style="font-size:12px;color:#888">（使用5年前同期数据：${targetDate}）</span>`;
+  }
 
+  // 查找目标数据
+  const targetData = calcData.find(item => item.date === targetDate);
+  if (!targetData) {
+    alert(`日期 ${targetDate} 无数据`);
+    return;
+  }
+
+  // 渲染结果
   document.getElementById("resToday").innerHTML = `
-  <strong>日期：</strong>${input}<br>
-  <strong>Re指数：</strong><span style='color:${item.Re>1.2?'red':'green'}'>${item.Re.toFixed(2)}</span>`;
+  <strong>查询日期：</strong>${inputDate}${tip}<br>
+  <strong>当日新增：</strong>${Math.round(targetData.newRaw)}<br>
+  <strong>Re指数：</strong><span style='color:${targetData.Re>1.2?'red':'green'}'>${targetData.Re.toFixed(2)}</span>`;
 }
 
+// 页面加载完成后初始化
 window.onload = loadStateData;
 </script>
 </body>
