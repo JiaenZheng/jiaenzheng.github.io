@@ -20,12 +20,19 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
 .full{grid-column:1 / -1}
 .item{padding:14px;background:#f5f7fa;border-radius:10px;margin:10px 0}
+.item div{margin:4px 0}
 .loading{text-align:center;padding:20px;color:#666}
-/* 图表控制样式 */
-.chart-controls{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
-.chart-controls button{padding:8px 16px;font-size:13px;background:#f0f2f5;color:#333;border:1px solid #dcdfe6}
-.chart-controls button.active{background:#165DFF;color:#fff;border-color:#165DFF}
-.tooltip {position:absolute;background:rgba(0,0,0,0.8);color:#fff;padding:8px 12px;border-radius:6px;font-size:12px;pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:1000}
+/* 修复图表过度伸展问题：固定图表容器高度+限制最大宽度 */
+.chart-container{
+  width:100%;
+  max-width:100%;
+  height:400px; /* 固定高度，避免过度伸展 */
+  position:relative;
+}
+canvas{
+  width:100%!important;
+  height:100%!important;
+}
 </style>
 </head>
 <body>
@@ -103,18 +110,12 @@ button{background:#165DFF;color:#fff;border:none;padding:10px 20px;border-radius
     <div class="card"><div id="resForecast"></div></div>
     <div class="card"><div id="resUrban"></div></div>
     <div class="card"><div id="resUAV"></div></div>
+    <!-- 修复：添加固定高度的图表容器，保留双语界面 -->
     <div class="card full">
-      <!-- 图表控制按钮 -->
-      <div class="chart-controls">
-        <button id="btnRe" class="active" onclick="switchChart('Re')">显示Re指数</button>
-        <button id="btnCases" onclick="switchChart('cases')">显示新增病例</button>
-        <button id="btnBoth" onclick="switchChart('both')">显示两者对比</button>
-        <button id="btnZoom7" onclick="zoomChart(7)">近7天</button>
-        <button id="btnZoom30" onclick="zoomChart(30)">近30天</button>
-        <button id="btnZoomAll" onclick="zoomChart('all')">全部数据</button>
+      <h3 style="margin-bottom:12px">Re指数趋势图 / Re Index Trend Chart</h3>
+      <div class="chart-container">
+        <canvas id="chartRe"></canvas>
       </div>
-      <canvas id="chartRe" style="width:100%;height:400px"></canvas>
-      <div class="tooltip" id="chartTooltip"></div>
     </div>
   </div>
 </div>
@@ -161,7 +162,6 @@ const STATE_CONFIG = {
   Washington: { population:7705281, csvFileName:"Washington_data.csv", ruralRatio:0.25 },
   Wisconsin: { population:5893718, csvFileName:"Wisconsin_data.csv", ruralRatio:0.37 },
   Wyoming: { population:578803, csvFileName:"Wyoming_data.csv", ruralRatio:0.72 },
-
   NewHampshire: { population:1388992, csvFileName:"NewHampshire_data.csv", ruralRatio:0.42 },
   NewJersey: { population:9288994, csvFileName:"NewJersey_data.csv", ruralRatio:0.11 },
   NewMexico: { population:2117522, csvFileName:"NewMexico_data.csv", ruralRatio:0.54 },
@@ -179,14 +179,11 @@ const COMMON_PARAMS = { gamma:0.2, smoothWindow:7, reWarnThreshold:1.2, growthWa
 
 let currentState = "Ohio", rawData = [], calcData = [], chart = null;
 let csvMinDate = "", csvMaxDate = "";
-let currentChartType = "Re"; // 当前图表类型：Re, cases, both
-let currentZoomRange = "all"; // 当前缩放范围：7, 30, all
 
-// 修复：统一日期格式化，避免时区问题
+// 统一日期格式化，避免时区问题
 function formatDate(d) {
   if (!d) return "";
   const date = new Date(d);
-  // 强制转本地日期，避免UTC偏移
   const y = date.getFullYear();
   const m = String(date.getMonth()+1).padStart(2,'0');
   const day = String(date.getDate()).padStart(2,'0');
@@ -221,7 +218,7 @@ function loadStateData() {
       rawData = validData;
       calculateData();
       setDateRange();
-      initChart();
+      initReChart(); // 仅初始化Re趋势图，不添加多余功能
       runQuery();
       document.getElementById("loading").style.display="none";
       document.getElementById("resultContainer").style.display="grid";
@@ -259,219 +256,122 @@ function calculateData() {
   });
 }
 
-// 修复：获取本地今天的日期，避免UTC时区差
+// 获取本地今天的日期，避免UTC时区差
 function getTodayDate() {
   const today = new Date();
-  // 强制取本地日期，不转UTC
   return `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 }
 
 function setDateRange() {
   csvMinDate = calcData[0].date;
   csvMaxDate = calcData[calcData.length-1].date;
-
-  const todayStr = getTodayDate(); // 改用修复后的本地日期
+  const todayStr = getTodayDate();
 
   document.getElementById("dateRangeText").textContent = `数据日期范围 Data Range：${csvMinDate} ~ ${csvMaxDate}（可查询至今天 ${todayStr}）`;
   const dateInput = document.getElementById("dateSel");
   dateInput.min = csvMinDate;
   dateInput.max = todayStr;
-  dateInput.value = todayStr; // 默认选中今天
+  dateInput.value = todayStr;
   dateInput.disabled = false;
   document.querySelector("button").disabled = false;
 }
 
-// 获取图表数据（支持缩放）
-function getChartData() {
-  let dataSlice = calcData;
-  
-  // 处理缩放
-  if (currentZoomRange !== "all") {
-    const startIndex = Math.max(0, calcData.length - currentZoomRange);
-    dataSlice = calcData.slice(startIndex);
-  }
-  
-  return {
-    labels: dataSlice.map(x => x.date),
-    reData: dataSlice.map(x => x.Re.toFixed(2)),
-    casesData: dataSlice.map(x => Math.round(x.newSmooth)),
-    rawCasesData: dataSlice.map(x => Math.round(x.newRaw))
-  };
-}
-
-function initChart() {
+// 仅初始化Re趋势图（核心功能，无多余扩展）
+function initReChart() {
   const ctx = document.getElementById("chartRe").getContext("2d");
   if(chart) chart.destroy();
+
+  // 生成预警线数据
+  const warnLineData = calcData.map(() => COMMON_PARAMS.reWarnThreshold);
   
-  const chartData = getChartData();
-  
-  // 基础配置
-  const config = {
+  chart = new Chart(ctx,{
     type:"line",
     data:{
-      labels: chartData.labels,
-      datasets: []
+      labels:calcData.map(x=>x.date),
+      datasets:[
+        {
+          label:`${currentState} 州 Re指数 / ${currentState} State Re Index`,
+          data:calcData.map(x=>x.Re.toFixed(2)),
+          borderColor:"#165DFF",
+          backgroundColor:"rgba(22,93,255,0.1)",
+          fill:true,
+          tension:0.3, // 平滑曲线，避免折线突兀
+          borderWidth:2,
+          pointRadius:1, // 缩小数据点，避免密集
+          pointHoverRadius:4 // 鼠标悬停时放大
+        },
+        {
+          label:"预警阈值 (Re=1.2) / Warning Threshold",
+          data: warnLineData,
+          borderColor:"#ff4d4f",
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          tension: 0,
+          pointRadius: 0,
+          order: 0
+        }
+      ]
     },
     options:{
       responsive:true,
-      maintainAspectRatio:false,
-      interaction: {
-        mode: 'index',
-        intersect: false,
-        onHover: (e) => {
-          const tooltip = document.getElementById('chartTooltip');
-          if (e.inDataset) {
-            const point = e.raw;
-            tooltip.style.opacity = 1;
-            tooltip.style.left = `${e.x + 10}px`;
-            tooltip.style.top = `${e.y + 10}px`;
-            
-            // 构建tooltip内容
-            let content = `<strong>日期：</strong>${chartData.labels[point.dataIndex]}<br>`;
-            if (currentChartType === 'Re' || currentChartType === 'both') {
-              content += `<strong>Re指数：</strong>${chartData.reData[point.dataIndex]}<br>`;
+      maintainAspectRatio:true, // 恢复比例，配合固定容器高度
+      scales:{
+        y:{
+          min:0,
+          max:3,
+          title:{display:true, text:"Re指数 / Re Index", font:{size:14}},
+          ticks: {
+            callback: function(value) {
+              if (value === COMMON_PARAMS.reWarnThreshold) {
+                return value + ' (预警线)';
+              }
+              return value;
             }
-            if (currentChartType === 'cases' || currentChartType === 'both') {
-              content += `<strong>新增病例(平滑)：</strong>${chartData.casesData[point.dataIndex]}<br>`;
-              content += `<strong>新增病例(原始)：</strong>${chartData.rawCasesData[point.dataIndex]}`;
-            }
-            
-            tooltip.innerHTML = content;
-          } else {
-            tooltip.style.opacity = 0;
           }
+        },
+        x:{
+          ticks:{
+            maxRotation:45, 
+            autoSkip:true, 
+            maxTicksLimit:20, // 减少X轴刻度数量，避免拥挤
+            font:{size:12}
+          }, 
+          title:{display:true, text:"日期 / Date", font:{size:14}}
         }
       },
       plugins: {
         legend: {
           position: 'top',
+          labels: {
+            font: {size:12},
+            usePointStyle: true
+          }
         },
         tooltip: {
-          enabled: false // 禁用默认tooltip，使用自定义的
-        },
-        annotation: {
-          annotations: {
-            line1: {
-              type: 'line',
-              yMin: 1.2,
-              yMax: 1.2,
-              borderColor: 'rgb(255, 99, 132)',
-              borderWidth: 2,
-              borderDash: [5, 5],
-              label: {
-                display: true,
-                content: '预警阈值 (1.2)',
-                position: 'end'
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              if (context.datasetIndex === 1) {
+                return `预警阈值: ${context.raw} (Re≥1.2 触发预警)`;
               }
+              return `${context.dataset.label}: ${context.raw}`;
             }
           }
         }
       },
-      scales:{
-        y: {
-          min: 0,
-          title: { display: true, text: "Re指数 / Re Index" }
-        },
-        y1: {
-          min: 0,
-          position: 'right',
-          grid: {
-            drawOnChartArea: false,
-          },
-          title: { display: true, text: "新增病例 / New Cases" }
-        },
-        x: {
-          ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 30 },
-          title: { display: true, text: "日期 / Date" }
+      // 禁用自动伸展相关配置
+      layout: {
+        padding: {
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10
         }
       }
     }
-  };
-
-  // 根据当前类型添加数据集
-  if (currentChartType === "Re" || currentChartType === "both") {
-    config.data.datasets.push({
-      label: `${currentState} 州 Re指数 / ${currentState} State Re Index`,
-      data: chartData.reData,
-      borderColor: "#165DFF",
-      backgroundColor: "rgba(22,93,255,0.1)",
-      fill: currentChartType === "Re",
-      tension: 0.3,
-      borderWidth: 2,
-      yAxisID: 'y'
-    });
-  }
-  
-  if (currentChartType === "cases" || currentChartType === "both") {
-    // 平滑新增病例
-    config.data.datasets.push({
-      label: `${currentState} 州 平滑新增病例 / ${currentState} State Smoothed New Cases`,
-      data: chartData.casesData,
-      borderColor: "#FF7D00",
-      backgroundColor: "rgba(255,125,0,0.1)",
-      fill: currentChartType === "cases",
-      tension: 0.3,
-      borderWidth: 2,
-      yAxisID: 'y1'
-    });
-    // 原始新增病例（虚线）
-    config.data.datasets.push({
-      label: `${currentState} 州 原始新增病例 / ${currentState} State Raw New Cases`,
-      data: chartData.rawCasesData,
-      borderColor: "#FF7D00",
-      borderDash: [5, 5],
-      tension: 0.1,
-      borderWidth: 1,
-      fill: false,
-      yAxisID: 'y1'
-    });
-  }
-
-  // 调整Y轴标题
-  if (currentChartType === "cases") {
-    config.options.scales.y.title.text = "新增病例 / New Cases";
-    config.options.scales.y1.display = false;
-  } else if (currentChartType === "both") {
-    config.options.scales.y.title.text = "Re指数 / Re Index";
-    config.options.scales.y1.display = true;
-  } else {
-    config.options.scales.y.title.text = "Re指数 / Re Index";
-    config.options.scales.y1.display = false;
-  }
-
-  // 创建图表
-  chart = new Chart(ctx, config);
-  
-  // 更新按钮状态
-  updateChartButtons();
-}
-
-// 切换图表类型
-function switchChart(type) {
-  currentChartType = type;
-  initChart();
-}
-
-// 缩放图表
-function zoomChart(range) {
-  currentZoomRange = range;
-  initChart();
-}
-
-// 更新图表控制按钮状态
-function updateChartButtons() {
-  // 重置所有按钮
-  document.querySelectorAll('.chart-controls button').forEach(btn => btn.classList.remove('active'));
-  
-  // 激活当前类型按钮
-  if (currentChartType === "Re") document.getElementById("btnRe").classList.add('active');
-  if (currentChartType === "cases") document.getElementById("btnCases").classList.add('active');
-  if (currentChartType === "both") document.getElementById("btnBoth").classList.add('active');
-  
-  // 激活当前缩放按钮
-  if (currentZoomRange === 7) document.getElementById("btnZoom7").classList.add('active');
-  if (currentZoomRange === 30) document.getElementById("btnZoom30").classList.add('active');
-  if (currentZoomRange === "all") document.getElementById("btnZoomAll").classList.add('active');
+  });
 }
 
 function predict72h(S0,I0,b0,i0) {
@@ -505,11 +405,10 @@ function getDateMinus5Years(dateStr) {
 
 function runQuery() {
   const inputDate = document.getElementById("dateSel").value;
-  const todayStr = getTodayDate(); // 本地今天
+  const todayStr = getTodayDate();
   const input = new Date(inputDate);
   const today = new Date(todayStr);
 
-  // 修复：只禁止 超过今天 的日期，等于今天允许
   if (input > today) {
     alert("不能选择未来日期 / Cannot select future date");
     return;
@@ -518,7 +417,6 @@ function runQuery() {
   let targetDate = inputDate;
   let tip = "";
 
-  // 输入日期在CSV之后 → 推5年
   if (input > new Date(csvMaxDate)) {
     targetDate = getDateMinus5Years(inputDate);
     tip = `<div style="color:#888;font-size:12px">（已自动使用 5 年前同期数据：${targetDate}）</div>`;
@@ -540,53 +438,33 @@ function runQuery() {
 
   const uavTip = ruralWarn?"⚠️ 优先农村配送（高风险）":urbanWarn?"⚠️ 优先城市配送（高风险）":"✅ 无需紧急配送（安全）";
 
+  // 保留完整双语界面
   document.getElementById("resToday").innerHTML = `
   <div class="item">
-    <div><strong>查询日期</strong>：${inputDate}</div>
-    <div><strong>当日新增</strong>：${Math.round(target.newRaw)}</div>
-    <div><strong>Re 指数</strong>：<span style="color:${target.Re>1.2?'red':'green'}">${target.Re.toFixed(2)}</span></div>
+    <div><strong>查询日期 / Query Date</strong>：${inputDate}</div>
+    <div><strong>当日新增 / New Cases</strong>：${Math.round(target.newRaw)}</div>
+    <div><strong>Re 指数 / Re Index</strong>：<span style="color:${target.Re>1.2?'red':'green'}">${target.Re.toFixed(2)}</span></div>
     ${tip}
   </div>`;
 
   document.getElementById("resForecast").innerHTML = `
   <div class="item">
-    <div><strong>72小时预测 Re</strong>：${statePred.Re.toFixed(2)}</div>
-    <div><strong>72小时新增</strong>：${Math.round(statePred.newCases)}</div>
-    <div><strong>增速</strong>：${(statePred.growth*100).toFixed(1)}%</div>
-    <div><strong>预警</strong>：${stateWarn?'⚠️ 预警':'✅ 安全'}</div>
+    <div><strong>72小时预测Re / 72h Predicted Re</strong>：${statePred.Re.toFixed(2)}</div>
+    <div><strong>72小时新增 / 72h New Cases</strong>：${Math.round(statePred.newCases)}</div>
+    <div><strong>增速 / Growth Rate</strong>：${(statePred.growth*100).toFixed(1)}%</div>
+    <div><strong>预警 / Warning</strong>：${stateWarn?'⚠️ 预警 / Warning':'✅ 安全 / Safe'}</div>
   </div>`;
 
   document.getElementById("resUrban").innerHTML = `
   <div class="item">
-    <div>城市 Urban：Re=${urbanPred.Re.toFixed(2)} 增速 ${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</div>
-    <div>农村 Rural：Re=${ruralPred.Re.toFixed(2)} 增速 ${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?'⚠️':'✅'}</div>
+    <div>城市 Urban：Re=${urbanPred.Re.toFixed(2)} 增速 Growth ${(urbanPred.growth*100).toFixed(1)}% ${urbanWarn?'⚠️':'✅'}</div>
+    <div>农村 Rural：Re=${ruralPred.Re.toFixed(2)} 增速 Growth ${(ruralPred.growth*100).toFixed(1)}% ${ruralWarn?'⚠️':'✅'}</div>
   </div>`;
 
   document.getElementById("resUAV").innerHTML = `
   <div class="item">
-    <div><strong>无人机建议</strong>：${uavTip}</div>
+    <div><strong>无人机建议 / UAV Dispatch Suggestion</strong>：${uavTip}</div>
   </div>`;
-  
-  // 在图表上标记查询日期
-  if (chart) {
-    const dataIndex = calcData.findIndex(x => x.date === targetDate);
-    if (dataIndex !== -1) {
-      // 添加垂直线标记查询日期
-      chart.options.plugins.annotation.annotations.queryLine = {
-        type: 'line',
-        xMin: dataIndex,
-        xMax: dataIndex,
-        borderColor: 'rgb(0, 200, 0)',
-        borderWidth: 2,
-        label: {
-          display: true,
-          content: `查询日期: ${targetDate}`,
-          position: 'top'
-        }
-      };
-      chart.update();
-    }
-  }
 }
 
 window.onload = loadStateData;
