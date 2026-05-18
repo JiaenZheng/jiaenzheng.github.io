@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>RM-SIR 疫情监测系统 v20260518 论文公式版</title>
+<title>RM-SIR 疫情监测系统 v20260518 双语标红版</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -156,9 +156,9 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
 </div>
 
 <script>
-console.log("=== 版本校验：2026-05-18 预警标红版 ===");
+console.log("=== 版本校验：2026-05-18 双语标红版 ===");
 console.log("如果看到这行，说明你加载到了最新版本！");
-console.log("已按照论文公式(6)修正了72小时预测和增长率计算，预警指标自动标红！");
+console.log("左边的Re：当天的，中英双语都标红！右边的Re：72小时预测的！");
 
 const US_STATES = [
   {value:"Ohio", name:"Ohio（俄亥俄州）", population:11700000, csv:"ohio_data.csv", rural:0.2},
@@ -539,7 +539,7 @@ function runQuery() {
   const statePred = predict72h(target);
   const stateWarn = statePred.nextRe > COMMON_PARAMS.reWarnThreshold && statePred.growth > COMMON_PARAMS.growthWarnThreshold;
   
-  // 预警标红的样式
+  // 整体预测的预警标红
   const reColor = statePred.nextRe > COMMON_PARAMS.reWarnThreshold ? 'red' : 'inherit';
   const growthColor = statePred.growth > COMMON_PARAMS.growthWarnThreshold ? 'red' : 'inherit';
   
@@ -555,6 +555,9 @@ function runQuery() {
   const ruralReColor = ruralPred.nextRe > COMMON_PARAMS.reWarnThreshold ? 'red' : 'inherit';
   const ruralGrowthColor = ruralPred.growth > COMMON_PARAMS.growthWarnThreshold ? 'red' : 'inherit';
   
+  // 当天的Re的标红！中英双语都标红！
+  const todayReColor = target.Re>1.2?'red':'green';
+  
   const uavTip = ruralWarn ? "⚠️ 优先农村配送 / Priority Rural Dispatch" : 
                  urbanWarn ? "⚠️ 优先城市配送 / Priority Urban Dispatch" : 
                  "✅ 无需紧急配送 / No Urgent Dispatch";
@@ -562,7 +565,7 @@ function runQuery() {
   document.getElementById("resToday").innerHTML = `
     <div><strong>查询日期：${date} / Date: ${date}</strong></div>
     <div>当日新增：${Math.round(target.newRaw)} / New Cases: ${Math.round(target.newRaw)}</div>
-    <div>Re指数：<span style="color:${target.Re>1.2?'red':'green'}">${target.Re.toFixed(2)}</span> / Re Index: ${target.Re.toFixed(2)}</div>
+    <div>Re指数：<span style="color:${todayReColor}">${target.Re.toFixed(2)}</span> / Re Index: <span style="color:${todayReColor}">${target.Re.toFixed(2)}</span></div>
   `;
   
   document.getElementById("resForecast").innerHTML = `
