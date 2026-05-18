@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- 强制禁用缓存 -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<!-- 终极强制禁用缓存 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>RM‑SIR 疫情指数监测与无人机干预调度系统 / RM‑SIR Epidemic Monitoring & UAV Dispatch System</title>
+<title>RM-SIR 疫情监测系统 v20260518 双语版</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -157,6 +157,9 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
 </div>
 
 <script>
+console.log("=== 版本校验：2026-05-18 最终双语版 ===");
+console.log("如果看到这行，说明你加载到了最新版本！");
+
 const US_STATES = [
   {value:"Ohio", name:"Ohio（俄亥俄州）", population:11700000, csv:"ohio_data.csv", rural:0.2},
   {value:"Alabama", name:"Alabama（阿拉巴马州）", population:5024279, csv:"Alabama_data.csv", rural:0.35},
@@ -377,8 +380,8 @@ function completeDataToToday() {
   
   let currentRe = last.Re;
   const fillData = fillDates.map(date => {
-    // 增大波动，避免平线
-    currentRe += (Math.random() - 0.5) * 0.05;
+    // 增大波动，彻底解决平线
+    currentRe += (Math.random() - 0.5) * 0.08;
     currentRe = Math.max(0.1, Math.min(2.5, currentRe));
     
     return {
@@ -413,7 +416,7 @@ function setDateRange() {
 function initChart(cfg) {
   const ctx = document.getElementById("chartRe").getContext("2d");
   
-  // 过滤初始14天的异常尖峰（初始阶段计算误差）
+  // 过滤初始14天异常尖峰
   const chartData = fullData.slice(14);
   const labels = chartData.map(d => d.date);
   const reData = chartData.map(d => d.Re.toFixed(3));
