@@ -159,6 +159,15 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
 console.log("=== 版本校验：2026-05-23 34省完整版 ===");
 console.log("如果看到这行，说明你加载到了最新版本！");
 console.log("已加入全部34个中国行政区，中英双语，支持所有省份的CSV加载！");
+console.log("边远地区（新疆/西藏等）CSV后Re自动设为0，更真实！");
+
+// 【新增】边远地区列表，这些地区CSV后Re显示为0
+const REMOTE_REGIONS = [
+  // 中国边远地区
+  "Xinjiang", "Tibet", "Qinghai", "Ningxia", "Gansu", "Innermongolia",
+  // 美国边远地区
+  "Alaska", "Wyoming", "Montana", "Vermont", "Maine", "NorthDakota", "SouthDakota"
+];
 
 const US_STATES = [
   {value:"Ohio", name:"Ohio（俄亥俄州）", population:11700000, csv:"ohio_data.csv", rural:0.2},
@@ -411,32 +420,59 @@ function completeDataToToday() {
   const fillDates = generateDateRange(new Date(lastDate).setDate(lastDate.getDate()+1), today);
   const last = calcData[calcData.length-1];
   
-  let currentRe = last.Re;
-  let currentNew = last.newSmooth;
-  let currentS = last.S;
-  let currentI = last.I;
-  const fillData = fillDates.map(date => {
-    currentRe += (Math.random() - 0.5) * 0.08;
-    currentRe = Math.max(0.1, Math.min(2.5, currentRe));
-    
-    currentNew = currentNew * (0.98 + Math.random() * 0.04);
-    currentS = Math.max(0, currentS - currentNew);
-    currentI = Math.max(0, currentI + currentNew - COMMON_PARAMS.gamma * currentI);
-    
-    return {
-      date: date,
-      newRaw: currentNew,
-      newSmooth: currentNew,
-      S: currentS,
-      I: currentI,
-      beta: last.beta * (0.98 + Math.random() * 0.04),
-      Rt: currentRe * last.N / currentS,
-      Re: currentRe,
-      N: last.N
-    };
-  });
+  // 【新增】判断是否是边远地区
+  const isRemote = REMOTE_REGIONS.includes(currentRegion);
   
-  fullData = [...calcData, ...fillData];
+  if(isRemote) {
+    // 边远地区：CSV后Re=0，无新增，感染者逐步恢复
+    let currentS = last.S;
+    let currentI = last.I;
+    const fillData = fillDates.map(date => {
+      // 没有新增，只有恢复
+      const recover = COMMON_PARAMS.gamma * currentI;
+      currentI = Math.max(0, currentI - recover);
+      
+      return {
+        date: date,
+        newRaw: 0,
+        newSmooth: 0,
+        S: currentS,
+        I: currentI,
+        beta: 0,
+        Rt: 0,
+        Re: 0,
+        N: last.N
+      };
+    });
+    fullData = [...calcData, ...fillData];
+  } else {
+    // 普通地区：原来的模拟波动补全
+    let currentRe = last.Re;
+    let currentNew = last.newSmooth;
+    let currentS = last.S;
+    let currentI = last.I;
+    const fillData = fillDates.map(date => {
+      currentRe += (Math.random() - 0.5) * 0.08;
+      currentRe = Math.max(0.1, Math.min(2.5, currentRe));
+      
+      currentNew = currentNew * (0.98 + Math.random() * 0.04);
+      currentS = Math.max(0, currentS - currentNew);
+      currentI = Math.max(0, currentI + currentNew - COMMON_PARAMS.gamma * currentI);
+      
+      return {
+        date: date,
+        newRaw: currentNew,
+        newSmooth: currentNew,
+        S: currentS,
+        I: currentI,
+        beta: last.beta * (0.98 + Math.random() * 0.04),
+        Rt: currentRe * last.N / currentS,
+        Re: currentRe,
+        N: last.N
+      };
+    });
+    fullData = [...calcData, ...fillData];
+  }
 }
 
 function setDateRange() {
