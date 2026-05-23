@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>RM-SIR 疫情监测系统 v20260518 双语标红版</title>
+<title>RM-SIR 疫情监测系统 v20260523 34省完整版</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -156,9 +156,9 @@ button:disabled { background: #8CB4FF; cursor: not-allowed; }
 </div>
 
 <script>
-console.log("=== 版本校验：2026-05-18 双语标红版 ===");
+console.log("=== 版本校验：2026-05-23 34省完整版 ===");
 console.log("如果看到这行，说明你加载到了最新版本！");
-console.log("左边的Re：当天的，中英双语都标红！右边的Re：72小时预测的！");
+console.log("已加入全部34个中国行政区，中英双语，支持所有省份的CSV加载！");
 
 const US_STATES = [
   {value:"Ohio", name:"Ohio（俄亥俄州）", population:11700000, csv:"ohio_data.csv", rural:0.2},
@@ -215,7 +215,40 @@ const US_STATES = [
 ];
 
 const CN_PROVINCES = [
-  {value:"Guangdong", name:"Guangdong（广东省）", population:126000000, csv:"Guangdong_data.csv", rural:0.25}
+  {value:"Anhui", name:"Anhui（安徽省）", population:61270000, csv:"Anhui_data.csv", rural:0.3743},
+  {value:"Beijing", name:"Beijing（北京市）", population:21890000, csv:"Beijing_data.csv", rural:0.1054},
+  {value:"Chongqing", name:"Chongqing（重庆市）", population:32050000, csv:"Chongqing_data.csv", rural:0.3054},
+  {value:"Fujian", name:"Fujian（福建省）", population:41540000, csv:"Fujian_data.csv", rural:0.304},
+  {value:"Gansu", name:"Gansu（甘肃省）", population:25020000, csv:"Gansu_data.csv", rural:0.4317},
+  {value:"Guangdong", name:"Guangdong（广东省）", population:126010000, csv:"Guangdong_data.csv", rural:0.2409},
+  {value:"Guangxi", name:"Guangxi（广西壮族自治区）", population:50130000, csv:"Guangxi_data.csv", rural:0.419},
+  {value:"Guizhou", name:"Guizhou（贵州省）", population:38520000, csv:"Guizhou_data.csv", rural:0.423},
+  {value:"Hainan", name:"Hainan（海南省）", population:10080000, csv:"Hainan_data.csv", rural:0.3973},
+  {value:"Hebei", name:"Hebei（河北省）", population:74610000, csv:"Hebei_data.csv", rural:0.3993},
+  {value:"Heilongjiang", name:"Heilongjiang（黑龙江省）", population:31850000, csv:"Heilongjiang_data.csv", rural:0.344},
+  {value:"Henan", name:"Henan（河南省）", population:98720000, csv:"Henan_data.csv", rural:0.4},
+  {value:"Hongkong", name:"Hongkong（香港特别行政区）", population:7470000, csv:"Hongkong_data.csv", rural:0},
+  {value:"Hubei", name:"Hubei（湖北省）", population:57750000, csv:"Hubei_data.csv", rural:0.3533},
+  {value:"Hunan", name:"Hunan（湖南省）", population:66040000, csv:"Hunan_data.csv", rural:0.3804},
+  {value:"Innermongolia", name:"Innermongolia（内蒙古自治区）", population:24050000, csv:"Innermongolia_data.csv", rural:0.3252},
+  {value:"Jiangsu", name:"Jiangsu（江苏省）", population:84750000, csv:"Jiangsu_data.csv", rural:0.245},
+  {value:"Jiangxi", name:"Jiangxi（江西省）", population:45190000, csv:"Jiangxi_data.csv", rural:0.3854},
+  {value:"Jilin", name:"Jilin（吉林省）", population:24070000, csv:"Jilin_data.csv", rural:0.3626},
+  {value:"Liaoning", name:"Liaoning（辽宁省）", population:42590000, csv:"Liaoning_data.csv", rural:0.2786},
+  {value:"Macau", name:"Macau（澳门特别行政区）", population:680000, csv:"Macau_data.csv", rural:0},
+  {value:"Ningxia", name:"Ningxia（宁夏回族自治区）", population:7200000, csv:"Ningxia_data.csv", rural:0.3504},
+  {value:"Qinghai", name:"Qinghai（青海省）", population:5920000, csv:"Qinghai_data.csv", rural:0.3992},
+  {value:"Shaanxi", name:"Shaanxi（陕西省）", population:39530000, csv:"Shaanxi_data.csv", rural:0.3661},
+  {value:"Shandong", name:"Shandong（山东省）", population:101530000, csv:"Shandong_data.csv", rural:0.3546},
+  {value:"Shanghai", name:"Shanghai（上海市）", population:24870000, csv:"Shanghai_data.csv", rural:0.1054},
+  {value:"Shanxi", name:"Shanxi（山西省）", population:34920000, csv:"Shanxi_data.csv", rural:0.3658},
+  {value:"Sichuan", name:"Sichuan（四川省）", population:83670000, csv:"Sichuan_data.csv", rural:0.4128},
+  {value:"Taiwan", name:"Taiwan（台湾省）", population:23560000, csv:"Taiwan_data.csv", rural:0.2},
+  {value:"Tianjin", name:"Tianjin（天津市）", population:13870000, csv:"Tianjin_data.csv", rural:0.1429},
+  {value:"Tibet", name:"Tibet（西藏自治区）", population:3650000, csv:"Tibet_data.csv", rural:0.417},
+  {value:"Xinjiang", name:"Xinjiang（新疆维吾尔自治区）", population:25850000, csv:"Xinjiang_data.csv", rural:0.4347},
+  {value:"Yunnan", name:"Yunnan（云南省）", population:47210000, csv:"Yunnan_data.csv", rural:0.45},
+  {value:"Zhejiang", name:"Zhejiang（浙江省）", population:64570000, csv:"Zhejiang_data.csv", rural:0.245}
 ];
 
 const COMMON_PARAMS = { 
